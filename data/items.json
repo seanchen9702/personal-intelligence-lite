@@ -1,1 +1,137 @@
-[]
+[
+  {
+    "id": "https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/",
+    "source_id": "simon_willison_entries",
+    "source_name": "Simon Willison",
+    "title_original": "Claude's new system prompt really doesn't want to reproduce song lyrics",
+    "url": "https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/",
+    "published": "2026-09-02T14:16:42+00:00",
+    "processed_at_utc": "2026-09-04T15:49:14.292822+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis": {
+      "keep": true,
+      "pis": 88,
+      "title_zh": "从Claude系统提示词变更，看模型治理与AI自我改进工作流",
+      "summary_zh": "Simon Willison对Anthropic公开的Claude系统提示词进行版本对比，发现Fable 5.1新增歌词、诗歌、书籍片段及受版权保护角色/视觉作品的拒答规则，并调整语气、辱骂处理和毒品安全信息策略。文章还揭示公开核心提示词并不完整，工具与功能模块会动态注入；作者用Git、自动化脚本和另一模型总结差异，构建可持续监测系统。",
+      "why_it_matters": "它不仅记录政策变化，更展示了如何把公开提示词变成可追踪的产品治理信号，并揭示系统提示词、工具层与动态上下文之间的架构边界。对AI产品设计、版权/安全策略、模型行为评估及个人情报自动化都有直接参考价值。",
+      "topics": [
+        "AI产品与应用",
+        "AI工作方式与自动化",
+        "AI技术/模型/Agent",
+        "AI治理与版权",
+        "提示词工程"
+      ],
+      "information_type": "混合",
+      "recommended_action": "进入Weekly分析",
+      "drop_reason": null
+    }
+  },
+  {
+    "id": "https://simonwillison.net/2026/Sep/1/claude-fable-5-1/",
+    "source_id": "simon_willison_entries",
+    "source_name": "Simon Willison",
+    "title_original": "Claude Fable 5.1 made me a really nice animated pelican",
+    "url": "https://simonwillison.net/2026/Sep/1/claude-fable-5-1/",
+    "published": "2026-09-01T23:57:28+00:00",
+    "processed_at_utc": "2026-09-04T15:49:14.292822+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis": {
+      "keep": true,
+      "pis": 78,
+      "title_zh": "Claude Fable 5.1 的“鹈鹕基准”：推理档位如何影响生成质量与成本",
+      "summary_zh": "Simon Willison 用生成“骑自行车的鹈鹕”SVG进行实测，比较 Claude Fable 5.1 的五档推理强度。低、中档几乎不显示推理且成本约10美分；xhigh与max分别耗时近8分钟、14分钟，成本1.83和3.30美元，输出质量明显提升，并可继续生成动画。文章还记录了推理轨迹、成本与工具链，展示了长推理在创意编码任务中的收益及边际成本。",
+      "why_it_matters": "对AI工作方式和产品评估有直接价值：同一模型的推理档位可能带来数量级的时间与成本差异，不能只看默认模型表现；同时说明“推理更长”在结构化创作任务中确实可能提升质量，但收益高度依赖任务与评价标准。",
+      "topics": [
+        "AI产品与应用",
+        "AI工作方式",
+        "AI技术/模型",
+        "推理成本与质量",
+        "创意编码",
+        "模型评测"
+      ],
+      "information_type": "混合",
+      "recommended_action": "进入Weekly分析",
+      "drop_reason": null
+    }
+  },
+  {
+    "id": "https://simonwillison.net/2026/Aug/30/understanding-chatgpt-work/",
+    "source_id": "simon_willison_entries",
+    "source_name": "Simon Willison",
+    "title_original": "Understanding ChatGPT Work",
+    "url": "https://simonwillison.net/2026/Aug/30/understanding-chatgpt-work/",
+    "published": "2026-08-30T23:59:47+00:00",
+    "processed_at_utc": "2026-09-04T15:49:14.292822+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis": {
+      "keep": true,
+      "pis": 94,
+      "title_zh": "深度拆解 ChatGPT Work：云端代理、浏览器与持久化工作空间",
+      "summary_zh": "Simon Willison通过实测拆解ChatGPT Work，指出其本质是具备代码执行、开放网络访问、持久文件系统、Chrome浏览器、子代理、站点部署和定时任务的云端代理平台；另有可访问本机文件和程序的Local版本。文章还整理了223个工具与44项Skills，并特别警告“私有数据＋不可信内容＋对外通信”构成提示注入的高风险组合。",
+      "why_it_matters": "这不是常规产品宣传，而是对新型AI工作方式和代理产品能力边界的实证逆向分析。对判断ChatGPT Work是否适合研究、自动化、资料处理与个人工作流很有价值；工具、Skills、浏览器和安全风险细节也具有较高认知与实践杠杆。",
+      "topics": [
+        "AI产品与应用",
+        "AI工作方式与自动化",
+        "AI技术/Agent",
+        "提示注入与AI安全",
+        "个人生产力"
+      ],
+      "information_type": "混合",
+      "recommended_action": "必看原文",
+      "drop_reason": null
+    }
+  },
+  {
+    "id": "https://simonwillison.net/2026/Aug/19/conceptual-integrity-and-counting-lines-of-code/",
+    "source_id": "simon_willison_entries",
+    "source_name": "Simon Willison",
+    "title_original": "Conceptual integrity and counting lines of code",
+    "url": "https://simonwillison.net/2026/Aug/19/conceptual-integrity-and-counting-lines-of-code/",
+    "published": "2026-08-19T22:46:07+00:00",
+    "processed_at_utc": "2026-09-04T15:49:14.292822+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis": {
+      "keep": true,
+      "pis": 88,
+      "title_zh": "AI编程提速后的真正瓶颈：认知容量与概念完整性",
+      "summary_zh": "Simon Willison提出：编码Agent确实可能把高质量代码产出从每天几十行提升到上千行，因此行数在严格控制质量时并非完全无意义。但个人无法同步理解和维护百倍代码，团队仍需通过多人分摊认知负荷。更重要的是，Agent让新增功能变得过于便宜，软件容易像“温彻斯特神秘屋”一样不断加建、失去概念完整性，因此工程纪律、架构治理和删减决策成为新瓶颈。",
+      "why_it_matters": "它提供了一个比“AI让程序员更高效”更具体的机制解释：生产能力增长会把瓶颈从编码转移到理解、整合、取舍与治理。对AI工作方式、团队设计、工程管理和生产力度量都有直接启发。",
+      "topics": [
+        "AI产品与实际应用",
+        "AI工作方式与自动化",
+        "AI技术/模型/Agent",
+        "Leadership与管理者培养",
+        "组织管理"
+      ],
+      "information_type": "混合",
+      "recommended_action": "进入Weekly分析",
+      "drop_reason": null
+    }
+  },
+  {
+    "id": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+    "source_id": "simon_willison_entries",
+    "source_name": "Simon Willison",
+    "title_original": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+    "url": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+    "published": "2026-08-16T22:00:39+00:00",
+    "processed_at_utc": "2026-09-04T15:49:14.292822+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis": {
+      "keep": true,
+      "pis": 91,
+      "title_zh": "Qwen 3.8 27B：17GB本地模型已具备视觉、编码与Agent能力，但默认推理严重过度",
+      "summary_zh": "Simon Willison实测Qwen 3.8 27B：17GB量化模型可在高端笔记本或DGX Spark本地运行，具备出色的SVG生成、视觉框选、代码生成和工具调用能力，并能驱动Pi编码Agent。关键问题是默认xhigh推理会在简单任务上消耗数万token、显著拖慢速度；关闭或降低推理深度更实用。llama.cpp的MTP推测解码可带来约72%的速度提升。文章以可复现实验揭示了本地模型能力、成本与延迟之间的真实权衡。",
+      "why_it_matters": "对本地AI工作方式和自动化具有直接实践价值：它证明17GB级开放权重模型已足以承担视觉、编码与Agent任务，同时提醒部署时必须管理reasoning_effort、上下文和推测解码，否则模型能力会被低效推理抵消。",
+      "topics": [
+        "AI产品与实际应用",
+        "AI工作方式与自动化",
+        "AI技术/模型/Agent",
+        "本地模型部署"
+      ],
+      "information_type": "混合",
+      "recommended_action": "必看原文",
+      "drop_reason": null
+    }
+  }
+]
