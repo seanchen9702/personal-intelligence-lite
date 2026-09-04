@@ -1,0 +1,14 @@
+[
+  {
+    "id": "simon_willison_entries",
+    "name": "Simon Willison",
+    "type": "atom",
+    "url": "https://simonwillison.net/atom/entries/",
+    "priority": "P0",
+    "topics": [
+      "AI产品与应用",
+      "AI工作方式",
+      "AI技术"
+    ]
+  }
+]
