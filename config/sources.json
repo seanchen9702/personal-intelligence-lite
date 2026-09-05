@@ -4,11 +4,58 @@
     "name": "Simon Willison",
     "type": "atom",
     "url": "https://simonwillison.net/atom/entries/",
+    "language": "EN",
     "priority": "P0",
     "topics": [
-      "AI产品与应用",
-      "AI工作方式",
-      "AI技术"
-    ]
+      "AI能力演进",
+      "企业AI深度应用",
+      "AI个人工作系统"
+    ],
+    "why_follow": "理解模型、Agent、AI工具链和真实使用边界，偏一线实践与可复现实验。"
+  },
+  {
+    "id": "ethan_mollick_one_useful_thing",
+    "name": "Ethan Mollick / One Useful Thing",
+    "type": "rss",
+    "url": "https://www.oneusefulthing.org/feed",
+    "language": "EN",
+    "priority": "P0",
+    "topics": [
+      "企业AI深度应用",
+      "AI时代组织变革",
+      "AI时代人才发展",
+      "未来社会观察"
+    ],
+    "why_follow": "核心交叉信源：AI如何改变工作、管理、教育与组织，与你的长期定位高度匹配。"
+  },
+  {
+    "id": "josh_bersin",
+    "name": "Josh Bersin",
+    "type": "rss",
+    "url": "https://joshbersin.com/feed/",
+    "language": "EN",
+    "priority": "P0",
+    "topics": [
+      "企业AI深度应用",
+      "AI时代组织变革",
+      "AI时代人才发展",
+      "AI创业机会"
+    ],
+    "why_follow": "关注企业AI、HR技术、人才与组织转型；适合观察企业真实采用与HR operating model变化，但需过滤商业推广。"
+  },
+  {
+    "id": "azeem_azhar_exponential_view",
+    "name": "Azeem Azhar / Exponential View",
+    "type": "rss",
+    "url": "https://www.exponentialview.co/feed",
+    "language": "EN",
+    "priority": "P0",
+    "topics": [
+      "企业AI深度应用",
+      "AI创业机会",
+      "未来社会观察",
+      "AI能力演进"
+    ],
+    "why_follow": "连接AI产业、企业采用、经济与社会结构变化，适合形成宏观判断和创业机会雷达。"
   }
 ]
