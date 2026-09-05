@@ -1,4 +1,4 @@
-# Personal Intelligence System V0.2.1
+# Personal Intelligence System V0.2.2
 # Full replacement file for src/main.py
 
 import json
@@ -16,7 +16,7 @@ SOURCES_PATH = ROOT / "config" / "sources.json"
 ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
 
-ANALYSIS_VERSION = "v0.2.1"
+ANALYSIS_VERSION = "v0.2.2"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
 
@@ -337,7 +337,9 @@ def main():
     processed = set(load_json(PROCESSED_PATH, []))
     client = OpenAI()
 
-    candidates = []
+    # 多源均衡采样：
+    # 先从每个来源各取 1 条，再进入下一轮，避免单一来源占满本次处理名额。
+    source_queues = []
 
     for source in sources:
         feed = feedparser.parse(source["url"])
@@ -345,16 +347,38 @@ def main():
         if getattr(feed, "bozo", False):
             print(f"[WARN] Feed 解析可能有问题: {source.get('name', '')} - {feed.bozo_exception}")
 
+        queue = []
         for entry in feed.entries:
             uid = entry.get("id") or entry.get("link") or entry.get("title")
 
             if not uid or uid in processed:
                 continue
 
-            candidates.append((source, entry, uid))
+            queue.append((source, entry, uid))
 
-    candidates = candidates[:MAX_NEW_ITEMS]
-    print(f"本次发现 {len(candidates)} 条待处理内容。")
+        if queue:
+            source_queues.append(queue)
+
+    candidates = []
+    round_index = 0
+
+    while len(candidates) < MAX_NEW_ITEMS:
+        added_this_round = False
+
+        for queue in source_queues:
+            if round_index < len(queue):
+                candidates.append(queue[round_index])
+                added_this_round = True
+
+                if len(candidates) >= MAX_NEW_ITEMS:
+                    break
+
+        if not added_this_round:
+            break
+
+        round_index += 1
+
+    print(f"本次发现 {len(candidates)} 条待处理内容，来自 {len(source_queues)} 个有新内容的来源。")
 
     run_time = datetime.now(timezone.utc).isoformat()
 
