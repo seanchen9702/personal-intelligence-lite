@@ -1,6 +1,7 @@
-# Personal Intelligence System V0.2.2
-# Full replacement file for src/main.py
+# Personal Intelligence System V0.3
+# Cross-source deduplication and event clustering
 
+import hashlib
 import json
 import os
 import re
@@ -15,10 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCES_PATH = ROOT / "config" / "sources.json"
 ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
+EVENTS_PATH = ROOT / "data" / "events.json"
 
-ANALYSIS_VERSION = "v0.2.2"
+ANALYSIS_VERSION = "v0.3"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
+CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "30"))
 
 SCHEMA = {
     "type": "object",
@@ -103,6 +106,131 @@ SCHEMA = {
     ],
     "additionalProperties": False
 }
+
+
+CLUSTER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "clusters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "member_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1
+                    },
+                    "event_title": {"type": "string"},
+                    "event_type": {
+                        "type": "string",
+                        "enum": ["事件", "报告/研究", "产品/发布", "案例", "独立内容"]
+                    },
+                    "knowledge_domain": {
+                        "type": "string",
+                        "enum": [
+                            "AI能力演进",
+                            "企业AI深度应用",
+                            "AI时代组织变革",
+                            "AI时代人才发展",
+                            "AI个人工作系统",
+                            "AI创业机会",
+                            "未来社会观察"
+                        ]
+                    },
+                    "combined_summary": {"type": "string"},
+                    "combined_judgment": {"type": "string"},
+                    "why_it_matters": {"type": "string"},
+                    "contradictions": {"type": "string"},
+                    "confidence": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"]
+                    },
+                    "recommended_action": {
+                        "type": "string",
+                        "enum": ["IGNORE", "READ", "SAVE", "APPLY", "DISCUSS", "BUILD"]
+                    },
+                    "unique_contributions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "item_id": {"type": "string"},
+                                "source_role": {
+                                    "type": "string",
+                                    "enum": [
+                                        "一手事实",
+                                        "技术机制",
+                                        "组织解释",
+                                        "企业实践",
+                                        "宏观趋势",
+                                        "人才/HR视角",
+                                        "商业机会",
+                                        "反方/校准",
+                                        "其他"
+                                    ]
+                                },
+                                "unique_contribution": {"type": "string"}
+                            },
+                            "required": ["item_id", "source_role", "unique_contribution"],
+                            "additionalProperties": False
+                        }
+                    }
+                },
+                "required": [
+                    "member_ids",
+                    "event_title",
+                    "event_type",
+                    "knowledge_domain",
+                    "combined_summary",
+                    "combined_judgment",
+                    "why_it_matters",
+                    "contradictions",
+                    "confidence",
+                    "recommended_action",
+                    "unique_contributions"
+                ],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["clusters"],
+    "additionalProperties": False
+}
+
+CLUSTER_INSTRUCTIONS = """
+你负责把多来源信息从“文章级”提升到“事件级”。
+
+你的首要任务是识别真正的跨来源重复，而不是把相似主题强行合并。
+
+【什么可以合并】
+只有以下情况才可以放进同一事件：
+1. 描述同一个真实世界事件、事故、发布、研究、报告或企业案例；
+2. 不同作者围绕同一个底层事件提供不同层次解释；
+3. 一篇主要提供技术事实，另一篇以同一事件为核心提供组织、人才、商业或治理解释。
+
+例如：
+- Simon解释某个Agent事故的技术机制；
+- Ethan以同一个Agent事故为核心讨论企业应该何时让AI主动寻求人类介入；
+这两篇可以属于同一个事件，但必须保留各自独特贡献。
+
+【什么不能合并】
+不要仅仅因为两篇文章都谈：
+Agent、AI治理、未来工作、模型成本、组织变化
+就放到一起。
+如果底层事实、报告或案例不同，应保持为不同事件。
+
+【每个事件必须完成】
+1. event_title：用中文写一个高信息密度的事件标题；
+2. combined_summary：合并已确认事实，不把推测写成事实；
+3. combined_judgment：解释不同来源拼在一起后，我们多知道了什么；
+4. contradictions：说明来源之间的差异、证据缺口或冲突；
+5. unique_contributions：逐条说明每个来源的角色和独特贡献。
+
+目标：
+未来Daily Brief不应该告诉我“今天有5篇文章”，
+而应该告诉我“今天真正有3个值得知道的事件，以及不同来源各自补充了什么”。
+"""
 
 INSTRUCTIONS = """
 你是我的 Personal Intelligence Advisor（个人AI情报顾问）。
@@ -328,6 +456,237 @@ def analyze(client, source, entry):
     }
 
 
+
+def make_event_id(member_ids):
+    raw = "|".join(sorted(member_ids)).encode("utf-8")
+    return "evt_" + hashlib.sha1(raw).hexdigest()[:12]
+
+
+def cluster_candidate_items(items):
+    candidates = []
+    for item in items:
+        analysis = item.get("analysis", {})
+        if not analysis.get("keep"):
+            continue
+        if analysis.get("pis", 0) < 50:
+            continue
+        if not analysis.get("core_judgment"):
+            continue
+        candidates.append(item)
+
+    # 最近写入的数据在列表尾部。
+    return candidates[-CLUSTER_MAX_ITEMS:]
+
+
+def build_cluster_payload(items):
+    payload = []
+    for item in items:
+        analysis = item.get("analysis", {})
+        payload.append({
+            "id": item.get("id", ""),
+            "source_name": item.get("source_name") or item.get("source", ""),
+            "title_original": item.get("title_original", ""),
+            "url": item.get("url", ""),
+            "pis": analysis.get("pis", 0),
+            "tier": analysis.get("tier", ""),
+            "knowledge_domain": analysis.get("knowledge_domain", ""),
+            "summary_zh": analysis.get("summary_zh", ""),
+            "core_judgment": analysis.get("core_judgment", ""),
+            "why_it_matters": analysis.get("why_it_matters", ""),
+            "information_type": analysis.get("information_type", "")
+        })
+    return payload
+
+
+def singleton_event(item):
+    analysis = item.get("analysis", {})
+    item_id = item.get("id", "")
+    source_name = item.get("source_name") or item.get("source", "")
+
+    return {
+        "event_id": make_event_id([item_id]),
+        "event_title": analysis.get("title_zh") or item.get("title_original", ""),
+        "event_type": "独立内容",
+        "knowledge_domain": analysis.get("knowledge_domain", ""),
+        "member_ids": [item_id],
+        "member_count": 1,
+        "source_names": [source_name] if source_name else [],
+        "source_count": 1 if source_name else 0,
+        "is_cross_source": False,
+        "event_pis": analysis.get("pis", 0),
+        "event_tier": analysis.get("tier", "Archive"),
+        "combined_summary": analysis.get("summary_zh", ""),
+        "combined_judgment": analysis.get("core_judgment", ""),
+        "why_it_matters": analysis.get("why_it_matters", ""),
+        "contradictions": analysis.get("counterpoint", ""),
+        "confidence": analysis.get("confidence", "medium"),
+        "recommended_action": analysis.get("action_type", "SAVE"),
+        "unique_contributions": [{
+            "item_id": item_id,
+            "source_name": source_name,
+            "source_role": "其他",
+            "unique_contribution": analysis.get("core_judgment", "")
+        }]
+    }
+
+
+def cluster_items(client, items):
+    candidates = cluster_candidate_items(items)
+
+    if not candidates:
+        return []
+
+    if len(candidates) == 1:
+        return [singleton_event(candidates[0])]
+
+    payload = build_cluster_payload(candidates)
+    valid_ids = {x["id"] for x in payload}
+    item_map = {item.get("id", ""): item for item in candidates}
+
+    response = client.responses.create(
+        model=MODEL,
+        instructions=CLUSTER_INSTRUCTIONS,
+        input=json.dumps(payload, ensure_ascii=False),
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "cross_source_event_clusters_v03",
+                "strict": True,
+                "schema": CLUSTER_SCHEMA
+            }
+        },
+        store=False
+    )
+
+    raw = json.loads(response.output_text)
+
+    events = []
+    assigned = set()
+
+    for cluster in raw.get("clusters", []):
+        member_ids = []
+        for item_id in cluster.get("member_ids", []):
+            if item_id in valid_ids and item_id not in assigned:
+                member_ids.append(item_id)
+
+        if not member_ids:
+            continue
+
+        assigned.update(member_ids)
+
+        member_items = [item_map[item_id] for item_id in member_ids]
+        member_sources = []
+        member_scores = []
+
+        for item in member_items:
+            source_name = item.get("source_name") or item.get("source", "")
+            if source_name and source_name not in member_sources:
+                member_sources.append(source_name)
+            member_scores.append(item.get("analysis", {}).get("pis", 0))
+
+        contributions = []
+        seen_contribution_ids = set()
+
+        for contribution in cluster.get("unique_contributions", []):
+            item_id = contribution.get("item_id", "")
+            if item_id not in member_ids or item_id in seen_contribution_ids:
+                continue
+
+            source_name = (
+                item_map[item_id].get("source_name")
+                or item_map[item_id].get("source", "")
+            )
+
+            contributions.append({
+                "item_id": item_id,
+                "source_name": source_name,
+                "source_role": contribution.get("source_role", "其他"),
+                "unique_contribution": contribution.get("unique_contribution", "")
+            })
+            seen_contribution_ids.add(item_id)
+
+        # 如果模型遗漏了某个成员的贡献，自动补齐。
+        for item_id in member_ids:
+            if item_id in seen_contribution_ids:
+                continue
+
+            item = item_map[item_id]
+            contributions.append({
+                "item_id": item_id,
+                "source_name": item.get("source_name") or item.get("source", ""),
+                "source_role": "其他",
+                "unique_contribution": item.get("analysis", {}).get("core_judgment", "")
+            })
+
+        event_pis = max(member_scores) if member_scores else 0
+
+        events.append({
+            "event_id": make_event_id(member_ids),
+            "event_title": cluster.get("event_title", ""),
+            "event_type": cluster.get("event_type", "独立内容"),
+            "knowledge_domain": cluster.get("knowledge_domain", ""),
+            "member_ids": member_ids,
+            "member_count": len(member_ids),
+            "source_names": member_sources,
+            "source_count": len(member_sources),
+            "is_cross_source": len(member_sources) >= 2,
+            "event_pis": event_pis,
+            "event_tier": get_tier(event_pis),
+            "combined_summary": cluster.get("combined_summary", ""),
+            "combined_judgment": cluster.get("combined_judgment", ""),
+            "why_it_matters": cluster.get("why_it_matters", ""),
+            "contradictions": cluster.get("contradictions", ""),
+            "confidence": cluster.get("confidence", "medium"),
+            "recommended_action": cluster.get("recommended_action", "SAVE"),
+            "unique_contributions": contributions
+        })
+
+    # 没有被模型分组的内容自动成为单例事件，避免丢信息。
+    for item in candidates:
+        item_id = item.get("id", "")
+        if item_id not in assigned:
+            events.append(singleton_event(item))
+
+    # 高价值事件排前面。
+    events.sort(
+        key=lambda x: (
+            x.get("is_cross_source", False),
+            x.get("event_pis", 0),
+            x.get("member_count", 0)
+        ),
+        reverse=True
+    )
+
+    return events
+
+
+def attach_event_metadata(items, events):
+    lookup = {}
+
+    for event in events:
+        contribution_lookup = {
+            x.get("item_id"): x
+            for x in event.get("unique_contributions", [])
+        }
+
+        for item_id in event.get("member_ids", []):
+            contribution = contribution_lookup.get(item_id, {})
+            lookup[item_id] = {
+                "event_id": event.get("event_id"),
+                "event_title": event.get("event_title"),
+                "event_type": event.get("event_type"),
+                "cluster_size": event.get("member_count", 1),
+                "is_cross_source": event.get("is_cross_source", False),
+                "source_role": contribution.get("source_role", "其他"),
+                "unique_contribution": contribution.get("unique_contribution", "")
+            }
+
+    for item in items:
+        item_id = item.get("id", "")
+        if item_id in lookup:
+            item["event"] = lookup[item_id]
+
+
 def main():
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("缺少 OPENAI_API_KEY。请在 GitHub Actions Secrets 中添加。")
@@ -415,10 +774,19 @@ def main():
             f"{analysis['title_zh']}"
         )
 
+    # 无论本轮有没有新内容，都重新检查最近高价值内容的跨来源事件关系。
+    events = cluster_items(client, items)
+    attach_event_metadata(items, events)
+
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
+    save_json(EVENTS_PATH, events)
 
-    print(f"累计已保存 {len(items)} 条记录。")
+    cross_source_count = sum(1 for event in events if event.get("is_cross_source"))
+    print(
+        f"累计已保存 {len(items)} 条记录；"
+        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件。"
+    )
 
 
 if __name__ == "__main__":
