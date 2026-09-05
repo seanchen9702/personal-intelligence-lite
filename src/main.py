@@ -17,8 +17,9 @@ SOURCES_PATH = ROOT / "config" / "sources.json"
 ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
 EVENTS_PATH = ROOT / "data" / "events.json"
+THEMES_PATH = ROOT / "data" / "themes.json"
 
-ANALYSIS_VERSION = "v0.3"
+ANALYSIS_VERSION = "v0.3.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
 CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "30"))
@@ -107,6 +108,77 @@ SCHEMA = {
     "additionalProperties": False
 }
 
+
+
+THEME_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "theme_title": {"type": "string"},
+                    "research_question": {"type": "string"},
+                    "related_event_ids": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "synthesis": {"type": "string"},
+                    "current_judgment": {"type": "string"},
+                    "still_unknown": {"type": "string"},
+                    "asset_direction": {"type": "string"},
+                    "confidence": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"]
+                    }
+                },
+                "required": [
+                    "theme_title",
+                    "research_question",
+                    "related_event_ids",
+                    "synthesis",
+                    "current_judgment",
+                    "still_unknown",
+                    "asset_direction",
+                    "confidence"
+                ],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["themes"],
+    "additionalProperties": False
+}
+
+THEME_INSTRUCTIONS = """
+你负责把事件级信息提升为研究主题层。
+
+输入不是文章，而是已经去重后的事件。
+
+你的任务：
+1. 找出多个事件背后的共同研究问题；
+2. 不为了数量强行合并；
+3. 一个主题至少应包含两个事件，或者代表一个持续值得追踪的核心问题。
+
+好的主题：
+- Agent如何获得权限，以及何时主动请求人类介入？
+- 企业AI价值为什么从模型能力转向流程和组织能力？
+- AI时代管理者需要保留哪些判断能力？
+
+不好的主题：
+- AI新闻
+- Agent相关
+- 今天的AI进展
+
+输出重点：
+theme_title：高信息密度中文标题
+research_question：未来持续追踪的问题
+synthesis：多个事件组合后新增的理解
+current_judgment：当前阶段判断
+still_unknown：仍未解决的问题
+asset_direction：未来可以沉淀的方法论/产品资产
+"""
 
 CLUSTER_SCHEMA = {
     "type": "object",
@@ -687,6 +759,66 @@ def attach_event_metadata(items, events):
             item["event"] = lookup[item_id]
 
 
+
+def theme_items_payload(events):
+    payload = []
+    for event in events:
+        if event.get("member_count", 0) < 1:
+            continue
+        payload.append({
+            "event_id": event.get("event_id"),
+            "event_title": event.get("event_title"),
+            "event_type": event.get("event_type"),
+            "knowledge_domain": event.get("knowledge_domain"),
+            "combined_summary": event.get("combined_summary"),
+            "combined_judgment": event.get("combined_judgment"),
+            "why_it_matters": event.get("why_it_matters"),
+            "event_pis": event.get("event_pis"),
+        })
+    return payload[-40:]
+
+
+def build_themes(client, events):
+    if len(events) < 2:
+        return []
+
+    payload = theme_items_payload(events)
+
+    response = client.responses.create(
+        model=MODEL,
+        instructions=THEME_INSTRUCTIONS,
+        input=json.dumps(payload, ensure_ascii=False),
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "research_themes_v031",
+                "strict": True,
+                "schema": THEME_SCHEMA
+            }
+        },
+        store=False
+    )
+
+    result = json.loads(response.output_text)
+    valid_ids = {e.get("event_id") for e in events}
+
+    themes=[]
+    for theme in result.get("themes", []):
+        related=[
+            x for x in theme.get("related_event_ids", [])
+            if x in valid_ids
+        ]
+        if len(related) < 2:
+            continue
+
+        theme["theme_id"]="theme_"+hashlib.sha1(
+            "|".join(sorted(related)).encode("utf-8")
+        ).hexdigest()[:12]
+        theme["related_event_count"]=len(related)
+        themes.append(theme)
+
+    return themes
+
 def main():
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("缺少 OPENAI_API_KEY。请在 GitHub Actions Secrets 中添加。")
@@ -778,14 +910,17 @@ def main():
     events = cluster_items(client, items)
     attach_event_metadata(items, events)
 
+    themes = build_themes(client, events)
+
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
     save_json(EVENTS_PATH, events)
+    save_json(THEMES_PATH, themes)
 
     cross_source_count = sum(1 for event in events if event.get("is_cross_source"))
     print(
         f"累计已保存 {len(items)} 条记录；"
-        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件。"
+        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件；形成 {len(themes)} 个研究主题。"
     )
 
 
