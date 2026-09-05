@@ -21,8 +21,8 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 
 ANALYSIS_VERSION = "v0.3.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
-CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "30"))
+MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "3"))
+CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "15"))
 
 SCHEMA = {
     "type": "object",
@@ -908,9 +908,9 @@ def main():
 
     # 无论本轮有没有新内容，都重新检查最近高价值内容的跨来源事件关系。
     events = cluster_items(client, items)
-    attach_event_metadata(items, events)
+attach_event_metadata(items, events)
 
-    themes = build_themes(client, events)
+themes = load_json(THEMES_PATH, [])
 
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
