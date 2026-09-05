@@ -908,9 +908,9 @@ def main():
 
     # 无论本轮有没有新内容，都重新检查最近高价值内容的跨来源事件关系。
     events = cluster_items(client, items)
-attach_event_metadata(items, events)
+    attach_event_metadata(items, events)
 
-themes = load_json(THEMES_PATH, [])
+    themes = load_json(THEMES_PATH, [])
 
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
