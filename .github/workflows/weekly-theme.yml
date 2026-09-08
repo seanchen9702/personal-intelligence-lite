@@ -1,37 +1,32 @@
-name: Weekly Theme Clustering
+name: Personal Intelligence - Weekly Themes
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * 1"
 
+permissions:
+  contents: write
 
 jobs:
-
-  theme-analysis:
-
+  weekly-theme-pipeline:
     runs-on: ubuntu-latest
-
     steps:
-
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-
-      - name: Run theme analysis
+        run: pip install -r requirements.txt
+      - name: Build weekly themes
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
+          OPENAI_MODEL: gpt-5.6-luna
+        run: python src/main.py --mode weekly
+      - name: Commit updated themes
         run: |
-          python src/main.py --mode weekly
+          git config user.name "personal-intelligence-bot"
+          git config user.email "personal-intelligence-bot@users.noreply.github.com"
+          git add data/themes.json
+          git commit -m "update weekly research themes" || echo "No changes"
+          git push
