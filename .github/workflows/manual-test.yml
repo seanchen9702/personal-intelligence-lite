@@ -9,31 +9,27 @@ permissions:
 jobs:
   run-intelligence-pipeline:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Run pipeline
+      - name: Run daily pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5.6-luna
-          MAX_NEW_ITEMS: "5"
-          CLUSTER_MAX_ITEMS: "30"
-        run: python src/main.py
-
+          MAX_NEW_ITEMS: "3"
+          CLUSTER_MAX_ITEMS: "15"
+          BRIEF_MAX_EVENTS: "6"
+        run: python src/main.py --mode daily
       - name: Commit updated data
         run: |
           git config user.name "personal-intelligence-bot"
           git config user.email "personal-intelligence-bot@users.noreply.github.com"
-          git add data/*.json
-          git commit -m "update intelligence data, event clusters and themes" || echo "No changes"
+          git add data/items.json data/processed.json data/events.json data/themes.json data/daily_brief.md
+          git commit -m "update intelligence data and daily brief" || echo "No changes"
           git push
