@@ -1,6 +1,7 @@
-# Personal Intelligence System V0.3
-# Cross-source deduplication and event clustering
+# Personal Intelligence System V0.4
+# Daily Brief output layer
 
+import argparse
 import hashlib
 import json
 import os
@@ -18,11 +19,13 @@ ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
 EVENTS_PATH = ROOT / "data" / "events.json"
 THEMES_PATH = ROOT / "data" / "themes.json"
+DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 
-ANALYSIS_VERSION = "v0.3.1"
+ANALYSIS_VERSION = "v0.4"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "3"))
+MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
 CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "15"))
+BRIEF_MAX_EVENTS = int(os.getenv("BRIEF_MAX_EVENTS", "6"))
 
 SCHEMA = {
     "type": "object",
@@ -302,6 +305,70 @@ Agent、AI治理、未来工作、模型成本、组织变化
 目标：
 未来Daily Brief不应该告诉我“今天有5篇文章”，
 而应该告诉我“今天真正有3个值得知道的事件，以及不同来源各自补充了什么”。
+"""
+
+
+BRIEF_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "headline": {"type": "string"},
+        "overview": {"type": "string"},
+        "judgment_updates": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "what_happened": {"type": "string"},
+                    "what_it_changes": {"type": "string"},
+                    "for_me": {"type": "string"},
+                    "still_uncertain": {"type": "string"},
+                    "event_ids": {"type": "array", "items": {"type": "string"}}
+                },
+                "required": ["title","what_happened","what_it_changes","for_me","still_uncertain","event_ids"],
+                "additionalProperties": False
+            }
+        },
+        "method_assets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "asset_name": {"type": "string"},
+                    "why_now": {"type": "string"},
+                    "next_step": {"type": "string"}
+                },
+                "required": ["asset_name","why_now","next_step"],
+                "additionalProperties": False
+            }
+        },
+        "actions": {"type": "array", "items": {"type": "string"}},
+        "watch_next": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["headline","overview","judgment_updates","method_assets","actions","watch_next"],
+    "additionalProperties": False
+}
+
+BRIEF_INSTRUCTIONS = """
+你负责生成我的每日AI企业转型简报。
+输入已经是去重后的事件，不要再做新闻列表。
+
+我的定位：
+从人力资源与组织视角出发，成为企业AI深度应用落地专家，关注AI技术 × 企业业务 × 组织与人才 × 创业机会。
+
+每日简报目标：
+1. 更新判断；
+2. 发现可转化为企业实践的方法；
+3. 识别值得继续验证的问题；
+4. 避免重复新闻和低价值热点。
+
+原则：
+- 优先 Immediate / Daily，其次 Weekly；
+- Archive 只有在能补充重要背景时才使用；
+- 不把作者观点写成事实；
+- 明确不确定性；
+- 最多3条判断更新；
+- actions 最多3条，必须具体、可执行。
 """
 
 INSTRUCTIONS = """
@@ -819,7 +886,126 @@ def build_themes(client, events):
 
     return themes
 
-def main():
+
+def select_brief_events(events):
+    rank = {"Immediate": 5, "Daily": 4, "Weekly": 3, "Archive": 2, "Drop": 1}
+    selected = [e for e in events if e.get("event_tier") != "Drop"]
+    selected.sort(key=lambda e: (rank.get(e.get("event_tier",""),0), e.get("event_pis",0), e.get("source_count",0)), reverse=True)
+    return selected[:BRIEF_MAX_EVENTS]
+
+
+def build_brief_payload(events):
+    payload = []
+    for event in select_brief_events(events):
+        payload.append({
+            "event_id": event.get("event_id",""),
+            "event_title": event.get("event_title",""),
+            "knowledge_domain": event.get("knowledge_domain",""),
+            "event_pis": event.get("event_pis",0),
+            "event_tier": event.get("event_tier",""),
+            "combined_summary": event.get("combined_summary",""),
+            "combined_judgment": event.get("combined_judgment",""),
+            "why_it_matters": event.get("why_it_matters",""),
+            "contradictions": event.get("contradictions",""),
+            "confidence": event.get("confidence",""),
+            "source_names": event.get("source_names",[])
+        })
+    return payload
+
+
+def fallback_daily_brief(events):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    selected = select_brief_events(events)
+    lines = [f"# AI企业转型 Daily Brief｜{today}", "", "> AI综合失败时的降级版。", ""]
+    if not selected:
+        lines += ["今天没有足够高价值的新事件。", ""]
+        return "\n".join(lines)
+
+    lines += ["## 今天最值得更新判断的事件", ""]
+    for idx, event in enumerate(selected[:3], 1):
+        lines += [
+            f"### {idx}. {event.get('event_title','')}", "",
+            f"**发生了什么：** {event.get('combined_summary','')}", "",
+            f"**判断更新：** {event.get('combined_judgment','')}", "",
+            f"**为什么重要：** {event.get('why_it_matters','')}", "",
+            f"**仍需校准：** {event.get('contradictions','')}", ""
+        ]
+    return "\n".join(lines)
+
+
+def render_daily_brief(brief, events):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    event_map = {e.get("event_id"): e for e in events}
+    lines = [
+        f"# AI企业转型 Daily Brief｜{today}", "",
+        f"> **{brief.get('headline','')}**", "",
+        brief.get("overview",""), "",
+        "## 01｜今天真正值得更新的判断", ""
+    ]
+
+    for idx, update in enumerate(brief.get("judgment_updates", [])[:3], 1):
+        lines += [
+            f"### {idx}. {update.get('title','')}", "",
+            f"**发生了什么**  \n{update.get('what_happened','')}", "",
+            f"**这改变了什么判断**  \n{update.get('what_it_changes','')}", "",
+            f"**与我有什么关系**  \n{update.get('for_me','')}", "",
+            f"**仍不能确认**  \n{update.get('still_uncertain','')}", ""
+        ]
+
+        srcs = []
+        for eid in update.get("event_ids", []):
+            for s in event_map.get(eid, {}).get("source_names", []):
+                if s not in srcs:
+                    srcs.append(s)
+        if srcs:
+            lines += [f"来源：{'、'.join(srcs)}", ""]
+
+    lines += ["## 02｜值得沉淀的方法论资产", ""]
+    assets = brief.get("method_assets", [])
+    if assets:
+        for a in assets[:3]:
+            lines += [
+                f"### {a.get('asset_name','')}", "",
+                f"**为什么现在值得沉淀：** {a.get('why_now','')}", "",
+                f"**最小下一步：** {a.get('next_step','')}", ""
+            ]
+    else:
+        lines += ["今天没有新的内容值得单独上升为方法论资产。", ""]
+
+    lines += ["## 03｜我今天可以做什么", ""]
+    actions = brief.get("actions", [])[:3]
+    lines += [f"- {x}" for x in actions] if actions else ["- 无需额外行动，优先消化已有判断。"]
+
+    lines += ["", "## 04｜接下来值得观察什么", ""]
+    watch = brief.get("watch_next", [])[:4]
+    lines += [f"- {x}" for x in watch] if watch else ["- 等待更多真实企业案例和反方证据。"]
+
+    lines += ["", "---", "", "## 本期事件索引", ""]
+    for e in select_brief_events(events):
+        lines.append(f"- **{e.get('event_title','')}**｜PIS {e.get('event_pis',0)}｜{e.get('event_tier','')}｜{'、'.join(e.get('source_names',[]))}")
+    return "\n".join(lines)
+
+
+def generate_daily_brief(client, events):
+    payload = build_brief_payload(events)
+    if not payload:
+        return fallback_daily_brief(events)
+
+    try:
+        response = client.responses.create(
+            model=MODEL,
+            instructions=BRIEF_INSTRUCTIONS,
+            input=json.dumps(payload, ensure_ascii=False),
+            text={"format": {"type": "json_schema", "name": "daily_brief_v04", "strict": True, "schema": BRIEF_SCHEMA}},
+            store=False
+        )
+        return render_daily_brief(json.loads(response.output_text), events)
+    except Exception as exc:
+        print(f"[WARN] Daily Brief AI综合失败，使用降级版: {exc}")
+        return fallback_daily_brief(events)
+
+
+def main(mode="daily"):
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("缺少 OPENAI_API_KEY。请在 GitHub Actions Secrets 中添加。")
 
@@ -828,101 +1014,98 @@ def main():
     processed = set(load_json(PROCESSED_PATH, []))
     client = OpenAI()
 
-    # 多源均衡采样：
-    # 先从每个来源各取 1 条，再进入下一轮，避免单一来源占满本次处理名额。
-    source_queues = []
+    if mode == "weekly":
+        events = load_json(EVENTS_PATH, [])
+        old_themes = load_json(THEMES_PATH, [])
+        try:
+            themes = build_themes(client, events)
+            save_json(THEMES_PATH, themes)
+            print(f"Weekly主题聚类完成：形成 {len(themes)} 个研究主题。")
+        except Exception as exc:
+            print(f"[WARN] Weekly主题聚类失败，保留旧 themes.json: {exc}")
+            save_json(THEMES_PATH, old_themes)
+        return
 
+    source_queues = []
     for source in sources:
         feed = feedparser.parse(source["url"])
-
         if getattr(feed, "bozo", False):
-            print(f"[WARN] Feed 解析可能有问题: {source.get('name', '')} - {feed.bozo_exception}")
+            print(f"[WARN] Feed 解析可能有问题: {source.get('name','')} - {feed.bozo_exception}")
 
         queue = []
         for entry in feed.entries:
             uid = entry.get("id") or entry.get("link") or entry.get("title")
-
-            if not uid or uid in processed:
-                continue
-
-            queue.append((source, entry, uid))
-
+            if uid and uid not in processed:
+                queue.append((source, entry, uid))
         if queue:
             source_queues.append(queue)
 
     candidates = []
     round_index = 0
-
     while len(candidates) < MAX_NEW_ITEMS:
-        added_this_round = False
-
+        added = False
         for queue in source_queues:
             if round_index < len(queue):
                 candidates.append(queue[round_index])
-                added_this_round = True
-
+                added = True
                 if len(candidates) >= MAX_NEW_ITEMS:
                     break
-
-        if not added_this_round:
+        if not added:
             break
-
         round_index += 1
 
     print(f"本次发现 {len(candidates)} 条待处理内容，来自 {len(source_queues)} 个有新内容的来源。")
-
     run_time = datetime.now(timezone.utc).isoformat()
 
     for source, entry, uid in candidates:
-        title = entry.get("title", "(无标题)")
-        print(f"分析: {title}")
-
+        print(f"分析: {entry.get('title','(无标题)')}")
         try:
             analysis = analyze(client, source, entry)
         except Exception as exc:
-            print(f"[ERROR] AI分析失败: {exc}")
+            print(f"[ERROR] AI分析失败，跳过该条: {exc}")
             continue
 
-        record = {
+        items.append({
             "id": uid,
-            "source_id": source.get("id", ""),
-            "source_name": source.get("name", ""),
-            "title_original": entry.get("title", ""),
-            "url": entry.get("link", ""),
-            "published": entry.get("published", entry.get("updated", "")),
+            "source_id": source.get("id",""),
+            "source_name": source.get("name",""),
+            "title_original": entry.get("title",""),
+            "url": entry.get("link",""),
+            "published": entry.get("published", entry.get("updated","")),
             "processed_at_utc": run_time,
             "model": MODEL,
             "analysis_version": ANALYSIS_VERSION,
             "analysis": analysis
-        }
-
-        items.append(record)
+        })
         processed.add(uid)
 
-        print(
-            f"  -> {analysis['tier']} | "
-            f"PIS {analysis['pis']} | "
-            f"{analysis['knowledge_domain']} | "
-            f"{analysis['title_zh']}"
-        )
-
-    # 无论本轮有没有新内容，都重新检查最近高价值内容的跨来源事件关系。
-    events = cluster_items(client, items)
-    attach_event_metadata(items, events)
+    old_events = load_json(EVENTS_PATH, [])
+    try:
+        events = cluster_items(client, items)
+        attach_event_metadata(items, events)
+    except Exception as exc:
+        print(f"[WARN] 事件聚类失败，保留旧 events.json: {exc}")
+        events = old_events
 
     themes = load_json(THEMES_PATH, [])
+    daily_brief = generate_daily_brief(client, events)
 
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
     save_json(EVENTS_PATH, events)
     save_json(THEMES_PATH, themes)
+    DAILY_BRIEF_PATH.write_text(daily_brief, encoding="utf-8")
 
-    cross_source_count = sum(1 for event in events if event.get("is_cross_source"))
+    cross_source_count = sum(1 for e in events if e.get("is_cross_source"))
     print(
         f"累计已保存 {len(items)} 条记录；"
-        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件；形成 {len(themes)} 个研究主题。"
+        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件；"
+        f"Daily Brief 已生成。"
     )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["daily", "weekly"], default="daily")
+    args = parser.parse_args()
+    main(args.mode)
