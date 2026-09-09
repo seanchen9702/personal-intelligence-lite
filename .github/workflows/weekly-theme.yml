@@ -9,21 +9,26 @@ permissions:
 jobs:
   weekly-theme-pipeline:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install dependencies
         run: pip install -r requirements.txt
+
       - name: Build weekly themes
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5.6-luna
         run: python src/main.py --mode weekly
-      - name: Commit updated themes
+
+      - name: Commit themes
         run: |
           git config user.name "personal-intelligence-bot"
           git config user.email "personal-intelligence-bot@users.noreply.github.com"
