@@ -24,7 +24,7 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.5.1"
+ANALYSIS_VERSION = "v0.5.1.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "6"))
@@ -742,8 +742,18 @@ def discover_from_sitemap(source, processed):
             print(f"[WARN] Sitemap读取失败: {source.get('name')} | {exc}")
             continue
 
-        soup = BeautifulSoup(raw, "xml")
-        urls = [x.get_text(strip=True) for x in soup.find_all("loc")]
+        # Avoid requiring lxml/xml parser in GitHub Actions.
+        # Sitemap XML is simple enough to parse <loc> values directly.
+        urls = re.findall(r"<loc>(.*?)</loc>", raw, flags=re.I | re.S)
+        urls = [
+            BeautifulSoup(x, "html.parser").get_text(strip=True)
+            for x in urls
+            if x.strip()
+        ]
+
+        if not urls:
+            print(f"[WARN] Sitemap未解析到URL: {source.get('name')} | {sitemap_url}")
+            continue
 
         for link in urls:
             low = link.lower()
