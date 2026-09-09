@@ -5,25 +5,39 @@ on:
   schedule:
     - cron: "0 1 * * *"
 
+permissions:
+  contents: write
+
 jobs:
   run-intelligence:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run pipeline
+      - name: Run Evidence-first pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5.6-luna
+          MAX_NEW_ITEMS: "3"
+          CLUSTER_MAX_ITEMS: "15"
+          BRIEF_MAX_EVENTS: "5"
+          ARTICLE_CHAR_LIMIT: "18000"
+        run: python src/main.py --mode daily
+
+      - name: Commit updated intelligence
         run: |
-          python src/main.py --mode daily
+          git config user.name "personal-intelligence-bot"
+          git config user.email "personal-intelligence-bot@users.noreply.github.com"
+          git add data/
+          git commit -m "update evidence-first intelligence" || echo "No changes"
+          git push
