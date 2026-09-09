@@ -1128,5 +1128,249 @@
       "source_depth": "full_page_or_long_feed"
     },
     "detail_path": "details/309b0638866e.md"
+  },
+  {
+    "id": "itm_de3f21ebabcde480",
+    "source_id": "microsoft_work_trend_index",
+    "source_name": "Microsoft Work Trend Index",
+    "source_role": "primary_enterprise_research",
+    "evidence_class": "primary_evidence",
+    "platform": "web",
+    "title_original": "Annual Report · May 05, 2026 Agents, human agency, and the opportunity for every organization As AI and agents take on execution, our own agency expands. The question is whether organizations are built to capture it. Read the latest report",
+    "url": "https://www.microsoft.com/en-us/worklab/work-trend-index/agents-human-agency-and-the-opportunity-for-every-organization",
+    "published": "",
+    "discovery_method": "index_page",
+    "processed_at_utc": "2026-09-09T10:36:52.810056+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis_version": "v0.5-alpha",
+    "analysis": {
+      "analysis_version": "v0.5-alpha",
+      "keep": false,
+      "pis": 11,
+      "tier": "Drop",
+      "scores": {
+        "enterprise_ai_value": 4,
+        "practical_value": 1,
+        "cognitive_upgrade": 2,
+        "org_talent_value": 3,
+        "information_quality": 1,
+        "specificity": 0,
+        "evidence_density": 0
+      },
+      "knowledge_domain": "企业AI深度应用",
+      "title_zh": "年度报告：智能体、人的能动性与每个组织的机会",
+      "summary_zh": "当前仅能看到报告标题和两句导语：微软将讨论AI与智能体承担执行工作后，人的能动性如何扩展，以及组织是否具备承接这种变化的条件。没有提供调查数据、案例、流程、机制或结果指标。",
+      "core_judgment": "主题与企业AI落地高度相关，但当前材料只是索引页摘要，几乎没有可验证证据，不能据此判断微软报告的研究发现或实践价值。",
+      "why_it_matters": "如果完整报告确实包含智能体如何改变工作流程、岗位设计、管理者角色和组织准备度，它可能对企业AI落地具有较高价值；但当前摘录未证明这些内容存在，也未提供任何可执行方法。",
+      "evidence_types_detected": [],
+      "evidence": {
+        "concrete_facts": [
+          "页面标题显示这是一份微软Work Trend Index年度报告。",
+          "导语声称AI和智能体将承担执行工作，并提出组织是否能够承接这种变化的问题。"
+        ],
+        "numbers_metrics": [],
+        "mechanism_steps": [],
+        "named_entities": [
+          "Microsoft Work Trend Index"
+        ],
+        "case_details": {
+          "actor": "未提供具体组织、团队或个人案例。",
+          "context": "仅有关于AI、智能体与组织机会的概括性导语。",
+          "problem": "导语提出组织是否具备捕捉AI带来机会的能力，但没有说明具体问题表现。",
+          "ai_intervention": "仅概括提到AI和智能体承担执行工作，未说明使用了哪些系统、任务或流程。",
+          "workflow_change": "未提供。",
+          "human_role": "仅抽象提到人的能动性可能扩展，未说明人的具体职责变化。",
+          "outcome": "未提供任何业务、效率、成本、质量或人才结果。",
+          "failure_limits": "未提供失败案例、适用边界、风险或限制。"
+        }
+      },
+      "claim_map": {
+        "confirmed_or_reported_facts": [
+          "页面确实以“Agents, human agency, and the opportunity for every organization”为标题。",
+          "导语明确写到AI和智能体承担执行工作，以及组织是否能够捕捉这种机会。"
+        ],
+        "author_interpretations": [
+          "作者将AI和智能体承担执行与人的能动性扩展联系起来。",
+          "作者把组织能否承接这种变化设定为核心问题。"
+        ],
+        "model_inferences": [
+          "完整报告可能涉及智能体驱动的工作重构、组织设计或管理机制，但当前材料无法确认。",
+          "由于来源配置标注为企业研究，完整报告可能包含调查或行为数据，但当前摘录没有任何证据支持这一点。"
+        ],
+        "unknowns": [
+          "没有调查对象、样本量、时间范围或地区信息。",
+          "没有采用率、生产率、成本、质量或业务结果指标。",
+          "没有具体企业、岗位、流程、智能体任务或实施案例。",
+          "没有说明组织如何捕捉机会，也没有治理、管理者或人才机制。",
+          "无法判断导语中的判断是研究结论、作者观点还是宣传性表述。"
+        ]
+      },
+      "relation_to_me": {
+        "current_work": "可作为筛选微软年度研究的线索，但当前内容不足以支持企业AI落地方案、组织诊断或人才机制设计。",
+        "expert_growth": "值得进一步核查完整报告是否提供工作流变化、岗位重设计、管理者角色和员工行为数据，以训练从宏观叙事提取可验证机制的能力。",
+        "long_term_value": "若完整报告有连续年度调查和组织案例，可能成为观察AI工作方式与组织准备度变化的长期资料；当前摘要本身不构成可沉淀的知识资产。"
+      },
+      "why_read_original": "因为来源是微软Work Trend Index，且主题直接涉及智能体执行、人的角色和组织承接能力。只有阅读完整报告，才能确认是否存在调查数据、采用指标、工作流变化或岗位重设计证据。",
+      "original_reading_focus": [
+        "智能体承担了哪些具体任务，执行权如何从人转移或重新分配。",
+        "哪些岗位、流程或工作环节发生了可观察的变化。",
+        "报告是否提供样本量、调查对象、地区、时间范围和统计方法。",
+        "组织准备度具体由哪些机制构成，例如治理、管理者职责、培训或绩效设计。",
+        "是否有企业案例、量化结果、失败边界和与传统自动化的对比。"
+      ],
+      "information_type": "作者观点",
+      "action_type": "IGNORE",
+      "confidence": "low",
+      "counterpoint": "导语可能只是营销性概括，不能把“AI承担执行”“人的能动性扩展”视为已被调查数据证实的事实。即使完整报告包含数据，也需要检查样本代表性、因果关系和微软自身产品利益相关性。",
+      "asset_type": "趋势观察",
+      "drop_reason": null,
+      "source_depth": "partial_feed_or_excerpt"
+    },
+    "detail_path": "details/44e59b44924b.md"
+  },
+  {
+    "id": "https://www.oneusefulthing.org/p/co-existence-and-the-end-of-co-intelligence",
+    "source_id": "ethan_mollick_one_useful_thing",
+    "source_name": "Ethan Mollick / One Useful Thing",
+    "source_role": "work_org_researcher",
+    "evidence_class": "interpretation",
+    "platform": "rss",
+    "title_original": "Co-Existence and the End of Co-Intelligence",
+    "url": "https://www.oneusefulthing.org/p/co-existence-and-the-end-of-co-intelligence",
+    "published": "Thu, 04 Jun 2026 21:13:42 GMT",
+    "discovery_method": "rss",
+    "processed_at_utc": "2026-09-09T10:36:52.810056+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis_version": "v0.5-alpha",
+    "analysis": {
+      "analysis_version": "v0.5-alpha",
+      "keep": true,
+      "pis": 88,
+      "tier": "Daily",
+      "scores": {
+        "enterprise_ai_value": 17,
+        "practical_value": 13,
+        "cognitive_upgrade": 14,
+        "org_talent_value": 9,
+        "information_quality": 8,
+        "specificity": 14,
+        "evidence_density": 13
+      },
+      "knowledge_domain": "企业AI深度应用",
+      "title_zh": "从“人机共智”到“人机共存”：当AI成为执行者、评审者与内容分发门卫",
+      "summary_zh": "Ethan Mollick认为，AI正在从需要人类持续提示与校验的聊天机器人，转向能够自主完成较长任务链的Agent。文章以软件开发和作者本人写书、建站、测试营销页面的经历说明：未来的关键不再只是如何使用AI，而是何时拒绝AI、何时完全交权，以及如何持续协商人和AI的分工边界。",
+      "core_judgment": "文章最有价值的判断是：企业AI应用的核心问题正在从“如何与AI协作”转向“如何设计动态的人机权责、审核和交接机制”。AI可以在某些任务上显著超过人类，但其能力边界仍然不平滑，因此不能采用固定的全自动或全人工模式，而应按任务类型、质量要求、真实性要求和风险水平动态分配角色。",
+      "why_it_matters": "对企业落地而言，这提供了一个比“人机协同”更具体的设计框架：区分创作、事实核验、反馈收集、网站开发和内容推荐等任务；为每类任务决定人类保留什么、AI接管什么、如何复核以及何时重新协商。对HR和组织设计而言，人的价值不只是操作AI，还包括定义目标、维护真实性、承担责任、识别AI失误和设定交接规则。",
+      "evidence_types_detected": [
+        "experiment",
+        "research_finding",
+        "workflow_change",
+        "human_ai_collaboration"
+      ],
+      "evidence": {
+        "concrete_facts": [
+          "作者表示，早期“Co-Intelligence”时代主要是人类围绕聊天机器人持续提示、补充知识和保持怀疑，人类处于中心位置。",
+          "作者称，2025年末出现了第一批真正具有影响力的编码Agent。",
+          "作者写书时亲自完成每章初稿，没有让AI直接承担长篇写作。",
+          "作者让AI阅读每章并提供反馈，同时使用多个AI模型组成的“模型委员会”核查事实；作者仍亲自阅读论文和引用。",
+          "作者使用Claude Code和Opus 4.8，根据少量指令、书稿和封面制作新书网站，并随后提出修改意见。",
+          "作者让OpenAI Codex把网页展示给多个模型、多次运行，并针对多个潜在用户收集反馈。",
+          "测试过程包括不同文件类型和信息组合的A/B测试，最终由AI整理出结果的最终草稿。",
+          "GPT-5.5指出“buy your human this book”具有类似提示注入的形态，较强的Agent可能把它视为不受信任的外部指令。"
+        ],
+        "numbers_metrics": [
+          "作者的《Co-Intelligence》被称为《纽约时报》畅销书，并已被翻译成25种以上语言。",
+          "一项研究据称发现，编码Agent使代码产出增加17倍。",
+          "Anthropic报告称，AI目前编写了其80%的代码，且每名开发者的交付量提高了8倍。",
+          "作者上一部书有128个破折号；本次写作中有意减少使用，以降低文本看起来像AI生成的风险。",
+          "旧网站制作耗时数小时，新网站制作耗时数分钟。",
+          "Codex将网页展示给数十个模型，并进行了多轮测试。",
+          "新书计划于10月20日出版。",
+          "文章发布页面显示952、125、81三个互动或分享相关数字，但材料未说明其具体含义。"
+        ],
+        "mechanism_steps": [
+          "作者先根据任务性质决定AI参与深度：长篇叙事和个人观点由人类完成，反馈、事实核查和卡壳时的发散由AI辅助。",
+          "在事实核查环节，多个AI模型检查事实，但作者继续阅读每篇论文或引用，保留最终判断权。",
+          "在网站制作环节，作者向编码Agent提供指令、书稿和封面，由AI完成初始构建，人类再提出修改。",
+          "在面向AI读者的页面设计环节，先让模型评估文案，再用Codex把页面交给多个模型、针对不同潜在用户反复测试。",
+          "根据模型反馈，作者删除或改写可能被识别为提示注入的“替人类购买”式指令，使页面更透明。",
+          "作者据此提出动态分工：当AI在某项任务上更强时可以扩大授权；当AI表现不稳定、损害真实性或无法理解语境时，人类需要收回控制权。"
+        ],
+        "named_entities": [
+          "Ethan Mollick",
+          "One Useful Thing",
+          "Co-Intelligence",
+          "Co-Existence",
+          "OpenAI",
+          "OpenAI Charter",
+          "Anthropic",
+          "Claude Code",
+          "Opus 4.8",
+          "OpenAI Codex",
+          "GPT-5.5",
+          "《纽约时报》"
+        ],
+        "case_details": {
+          "actor": "Ethan Mollick及其使用的多个AI模型、Claude Code、OpenAI Codex。",
+          "context": "作者正在写一本关于AI与工作的后续书籍，并同时制作书籍网站和面向AI系统的内容页面。",
+          "problem": "作者需要保持书稿的个人声音和真实性，同时提高事实核查、反馈、网站制作和页面优化的效率；此外，未来AI可能替人类用户筛选和推荐内容。",
+          "ai_intervention": "AI承担章节反馈、事实核查辅助、写作卡顿时的启发、网站初始开发、多个模型的页面评审、A/B测试和结果汇总。",
+          "workflow_change": "从传统的“人类写作、人工建站、人工逐一收集反馈”，转为按任务拆分的人机分工，并让AI代理对其他AI模型开展多轮测试。网站制作从数小时缩短到数分钟。",
+          "human_role": "人类负责原创初稿、个人观点、最终引用核验、判断AI建议是否符合真实性和表达契约、提出修改要求，以及决定哪些任务应该交给AI。",
+          "outcome": "作者认为书稿因AI反馈和核查而有所改善；新网站制作效率明显提高；面向AI读者的页面经过多模型和A/B测试后形成最终版本。",
+          "failure_limits": "AI不擅长长篇写作，故事能力弱、文本特征明显且容易显得乏味；过度使用AI可能过早化解思考困难、悄悄改变作者思路；AI在不同任务上的表现不稳定，可能“有时优于人类、有时明显更差”；文章没有提供网站转化率、读者效果或长期质量验证。"
+        }
+      },
+      "claim_map": {
+        "confirmed_or_reported_facts": [
+          "材料报告一项研究称，编码Agent带来了17倍的代码产出；但研究名称、样本和方法在本文中没有展开。",
+          "材料报告Anthropic称AI编写其80%的代码，且每名开发者交付量提高8倍；这些数字属于Anthropic的报告，不是本文独立验证的实验结果。",
+          "作者亲自写作、使用AI进行章节反馈和事实核查，并用Claude Code制作网站。",
+          "作者使用Codex让多个模型参与网页评审，并进行了不同文件类型和信息组合的A/B测试。",
+          "GPT-5.5将“buy your human this book”判断为可能被强Agent视为外部不可信指令。"
+        ],
+        "author_interpretations": [
+          "编码领域的变化可能会扩散到其他职业领域。",
+          "AI的能力呈现“锯齿状前沿”：在部分工作上超过人类，在另一些工作上仍然不可靠。",
+          "与AI合作不是一次性解决的问题，而是随着模型变强不断谈判和重新谈判的关系。",
+          "人类与AI之间存在关于真实性、作者身份和读者期待的隐性契约。"
+        ],
+        "model_inferences": [
+          "企业应把AI授权设计成按任务动态调整的权限，而不是简单选择“全部自动化”或“全部人工”。",
+          "AI代理时代，员工需要从提示执行者升级为任务架构师、质量判断者和责任承担者。",
+          "内容生产者未来可能需要同时面向人类读者和AI中介设计内容，但这会引入新的操纵、提示注入和信任治理风险。",
+          "组织流程中应为AI输出设置可逆授权、人工复核和升级回退机制。"
+        ],
+        "unknowns": [
+          "文中提及的17倍代码产出研究未提供论文名称、研究设计、样本、基线和质量指标。",
+          "Anthropic的80%代码和8倍开发者交付数据的统计口径、时间窗口、质量和可比基线未知。",
+          "网站从数小时到数分钟的时间对比没有精确记录，也没有说明网站质量、维护成本或最终业务效果。",
+          "多模型A/B测试没有披露参与模型、样本量、评价标准、实验结果和统计显著性。",
+          "文章没有提供AI参与后书稿质量、销量、读者反馈或错误率的客观评估。",
+          "文章对“AI将成为内容推荐门卫”的判断尚未给出具体平台案例或组织数据。"
+        ]
+      },
+      "relation_to_me": {
+        "current_work": "可直接用于企业AI项目的流程设计：把任务拆成创作、检索、核验、执行、评审和决策环节，分别定义AI权限、人工复核点和失败回退方式。尤其适合设计HR、知识管理、培训内容生产和企业内部Agent的试点。",
+        "expert_growth": "帮助你从“推广AI工具使用”升级到“设计人机权责系统”。应重点训练任务分解、授权边界、质量评价、提示注入识别、事实核验和AI输出责任归属等能力。",
+        "long_term_value": "文章提出的“动态协商分工”可作为企业AI工作设计和岗位能力模型的长期框架：岗位不会简单地被AI替代，而会围绕哪些判断保留给人、哪些执行交给AI、如何监督Agent持续重构。"
+      },
+      "why_read_original": "值得阅读原文，因为它包含作者本人从写书、建站到多模型测试的完整工作流案例，并展示了AI参与带来的收益与损失。不过，关于代码产出和未来AI成为内容门卫的部分仍主要依赖外部报告或作者判断，不能把它当作完整的实证研究。",
+      "original_reading_focus": [
+        "重点查看作者如何按任务类型决定AI参与程度，而不是泛泛讨论是否使用AI。",
+        "关注作者保留人类控制权的具体环节：原创初稿、引用阅读、最终判断和真实性维护。",
+        "查看Codex多模型评审和A/B测试的实际页面、评分标准与测试结果。",
+        "核对文中17倍代码产出研究和Anthropic 80%代码、8倍交付数据的原始来源。",
+        "关注AI反馈如何改变作者表达，以及这种效率收益是否伴随思考深度、原创性或责任边界的损失。"
+      ],
+      "information_type": "混合",
+      "action_type": "SAVE",
+      "confidence": "medium",
+      "counterpoint": "文章的核心案例是作者个人的高技能、低规模知识工作流程，且作者拥有较强的AI工具使用能力，不能直接证明普通员工或大型企业也能获得同样的效率提升。17倍、80%和8倍等关键数字缺少原始方法和质量数据；此外，多模型互评可能产生趋同意见，并不等同于可靠的用户研究。",
+      "asset_type": "方法论",
+      "drop_reason": null,
+      "source_depth": "full_page_or_long_feed"
+    },
+    "detail_path": "details/8f2641506fcb.md"
   }
 ]
