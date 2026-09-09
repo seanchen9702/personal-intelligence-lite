@@ -28,10 +28,11 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5.6-luna
-          MAX_NEW_ITEMS: "3"
-          CLUSTER_MAX_ITEMS: "15"
-          BRIEF_MAX_EVENTS: "5"
-          ARTICLE_CHAR_LIMIT: "18000"
+          MAX_NEW_ITEMS: "6"
+          CLUSTER_MAX_ITEMS: "20"
+          BRIEF_MAX_EVENTS: "6"
+          ARTICLE_CHAR_LIMIT: "20000"
+          INDEX_MAX_LINKS: "30"
         run: python src/main.py --mode daily
 
       - name: Commit updated intelligence
