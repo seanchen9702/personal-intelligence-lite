@@ -1,5 +1,5 @@
-# Personal Intelligence System V0.4.1
-# Evidence-first: source detail extraction, evidence scoring, drill-down pages, and Daily Brief.
+# Personal Intelligence System V0.5 Collector Alpha
+# Multi-source collector: RSS / Atom / Index Page + Evidence-first analysis.
 
 import argparse
 import hashlib
@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 import feedparser
@@ -23,18 +24,22 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.4.1"
-MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "3"))
+ANALYSIS_VERSION = "v0.5-alpha"
+MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
+
+MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "6"))
 CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "15"))
 BRIEF_MAX_EVENTS = int(os.getenv("BRIEF_MAX_EVENTS", "5"))
 ARTICLE_CHAR_LIMIT = int(os.getenv("ARTICLE_CHAR_LIMIT", "18000"))
+INDEX_MAX_LINKS = int(os.getenv("INDEX_MAX_LINKS", "20"))
+
+USER_AGENT = "Mozilla/5.0 PersonalIntelligenceBot/0.5"
 
 # ---------------------------------------------------------------------
-# Evidence-first single-item analysis
+# Schemas
 # ---------------------------------------------------------------------
 
-SCHEMA = {
+ITEM_SCHEMA = {
     "type": "object",
     "properties": {
         "scores": {
@@ -75,6 +80,10 @@ SCHEMA = {
         "summary_zh": {"type": "string"},
         "core_judgment": {"type": "string"},
         "why_it_matters": {"type": "string"},
+        "evidence_types_detected": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
         "evidence": {
             "type": "object",
             "properties": {
@@ -167,6 +176,7 @@ SCHEMA = {
         "summary_zh",
         "core_judgment",
         "why_it_matters",
+        "evidence_types_detected",
         "evidence",
         "claim_map",
         "relation_to_me",
@@ -182,86 +192,40 @@ SCHEMA = {
     "additionalProperties": False
 }
 
-INSTRUCTIONS = """
+ITEM_INSTRUCTIONS = """
 你是 Evidence-first Personal Intelligence Advisor。
 
-我的方向：
+我的定位：
 从人力资源与组织视角出发，成长为企业AI深度应用落地专家。
-我不需要更多“正确的AI观点”，我需要可以支撑判断的具体事实、企业案例、机制、数据、失败过程和工作流细节。
+我关注 AI技术 × 企业业务 × 组织与人才 × 创业机会。
 
-【最重要的原则】
-先抽取证据，再做判断。不要先想一个漂亮结论，再从原文中寻找支持。
+最重要的原则：
+先抽取证据，再做判断。
+不要因为作者知名、观点正确、主题热门而加分。
 
-如果删掉企业名、人物、数字、流程、机制、失败细节后，内容只剩：
-“AI会改变工作”“企业要重视治理”“人机协同很重要”“Agent是未来”
-则这是正确的废话，应显著降分。
+如果去掉企业名、人物、数字、流程、机制、失败细节后，只剩：
+“AI会改变工作”“企业要重视治理”“人机协同重要”“Agent是未来”
+则这是“正确的废话”，必须显著降分。
 
-【固定评分，共100分】
-enterprise_ai_value 0-20：
-是否帮助理解AI如何进入真实企业和业务。
+评分固定100分：
+- enterprise_ai_value 0-20
+- practical_value 0-15
+- cognitive_upgrade 0-15
+- org_talent_value 0-10
+- information_quality 0-10
+- specificity 0-15
+- evidence_density 0-15
 
-practical_value 0-15：
-是否可以转化成实验、模板、方法或具体动作。
+证据要求：
+1. concrete_facts：只写材料明确支持的事实。
+2. numbers_metrics：只列材料中的数字、比例、时间、成本、规模、结果指标。
+3. mechanism_steps：尽量还原“怎么发生 / 怎么做”的过程。
+4. case_details：主体—背景—问题—AI介入—流程变化—人的角色—结果—失败/限制。
+5. claim_map：必须区分事实、作者解释、模型推断、未知。
+6. evidence_types_detected：只从来源配置提供的 expected_evidence 标签里选择真正被材料支持的标签；不支持就不要选。
 
-cognitive_upgrade 0-15：
-是否提供新机制、新反例或真正改变判断的证据。
-
-org_talent_value 0-10：
-是否帮助理解岗位、管理、组织、人才与变革。
-
-information_quality 0-10：
-证据来源和可信度。
-
-specificity 0-15：
-有没有明确主体、任务、流程、工具、权限、动作、结果和失败细节。
-
-evidence_density 0-15：
-每单位内容中有多少可验证事实、数字、案例和机制，而不是评论和概念。
-
-【硬性上限】
-- specificity < 6 且 evidence_density < 6：总分应视为不超过49。
-- specificity < 8 或 evidence_density < 8：除非是重大一手研究，否则不应进入Daily。
-- 没有任何具体事实、数字、机制或案例：默认Drop。
-- 作者知名度不能加分。
-
-【证据输出】
-concrete_facts：
-只写原文明确报告/描述的事实，尽量包含主体、动作、对象、条件。
-
-numbers_metrics：
-把所有有解释价值的数字、比例、时间、成本、次数、规模、结果指标列出来。没有就返回空数组，禁止编造。
-
-mechanism_steps：
-如果原文描述了“怎么发生/怎么做”的过程，按步骤提炼。没有则返回空数组。
-
-case_details：
-尽可能还原“谁—什么背景—原问题—AI如何介入—流程怎么变—人做什么—结果—失败或限制”。
-原文没有的信息明确写“原文未提供”，不要补全。
-
-claim_map：
-必须区分：
-1. 原文明示的事实/报告；
-2. 作者解释；
-3. 你基于材料做的推断；
-4. 尚未知。
-
-【判断输出】
-core_judgment必须由证据推出。
-如果证据不足，不要用宏大结论包装。
-
-why_read_original：
-告诉我为什么值得点开原文；如果不值得，明确说“不需要阅读全文”。
-
-original_reading_focus：
-告诉我打开原文后重点找什么细节，而不是让我从头通读。
-
-目标：
-让我能够从日报快速扫读，并在真正重要的内容上继续下钻到细节和原始材料。
+若材料只是摘要或列表页内容，要明确证据有限，不能假装读过全文。
 """
-
-# ---------------------------------------------------------------------
-# Event clustering
-# ---------------------------------------------------------------------
 
 CLUSTER_SCHEMA = {
     "type": "object",
@@ -350,24 +314,19 @@ CLUSTER_SCHEMA = {
 
 CLUSTER_INSTRUCTIONS = """
 把文章级信息聚合为事件级信息。
-只有描述同一底层事件、报告、企业案例、产品发布或实验时才合并。
-相似主题但底层事实不同，不要合并。
+只有同一底层事件、报告、企业案例、产品发布或实验才合并。
+相似主题但底层事实不同，不合并。
 
-聚合时优先保留：
+保留：
 - 企业/机构/产品名称
-- 真实工作任务
-- 具体数字和指标
-- 实际流程
-- 技术或管理机制
-- 失败、反例和限制
+- 工作任务
+- 数字指标
+- 流程
+- 技术/管理机制
+- 失败、限制和证据缺口
 
-combined_judgment不能比成员材料更宏大。
-key_evidence必须是成员材料中已存在的具体证据。
+combined_judgment不能超出成员材料。
 """
-
-# ---------------------------------------------------------------------
-# Weekly themes
-# ---------------------------------------------------------------------
 
 THEME_SCHEMA = {
     "type": "object",
@@ -406,15 +365,9 @@ THEME_SCHEMA = {
 
 THEME_INSTRUCTIONS = """
 把事件提升为研究主题。
-不要输出“AI治理”“Agent趋势”这类宽泛主题。
-主题必须是一个值得长期验证的具体问题，例如：
-“企业如何确定Agent必须暂停并请求人工授权的阈值？”
+主题必须是未来值得持续验证的具体研究问题，而不是“Agent趋势”“AI治理”这种宽泛分类。
 优先围绕多个事件共享的机制、矛盾或证据缺口形成主题。
 """
-
-# ---------------------------------------------------------------------
-# Daily Brief
-# ---------------------------------------------------------------------
 
 BRIEF_SCHEMA = {
     "type": "object",
@@ -462,21 +415,18 @@ BRIEF_SCHEMA = {
 
 BRIEF_INSTRUCTIONS = """
 生成 Evidence-first Daily Intelligence。
-
-不要再写长篇抽象判断。最多3条。
-
-每条内容必须：
-1. 明确为什么能进入Top 3：因为有了什么新证据，而不是观点听起来正确；
-2. 判断更新必须由具体证据支持；
-3. 不确定性必须真实存在；
-4. 如果事件证据密度低，就不要选。
-
-日报只负责快速扫读。
-更完整的事实、数字、机制、案例过程和原文入口，会放在对应detail页面。
+最多3条Top内容。
+每条必须说明：
+- 为什么有资格进入Top 3
+- 最关键的新证据
+- 它改变了什么判断
+- 对我的企业AI落地能力有什么实际价值
+- 还有什么不能确认
+低证据密度内容不要选。
 """
 
 # ---------------------------------------------------------------------
-# Helpers
+# Generic helpers
 # ---------------------------------------------------------------------
 
 def load_json(path, default):
@@ -498,56 +448,388 @@ def clean_html(value):
     return text.strip()
 
 
-def feed_text(entry):
-    parts = []
-    if entry.get("title"):
-        parts.append(entry.get("title"))
-    if entry.get("summary"):
-        parts.append(clean_html(entry.get("summary")))
-    for content in entry.get("content", []):
-        value = content.get("value", "")
-        if value:
-            parts.append(clean_html(value))
-    return "\n\n".join(x for x in parts if x).strip()
+def normalize_sources(raw):
+    # V0.5 format: {"version": "...", "strategy": {...}, "sources": [...]}
+    if isinstance(raw, dict) and isinstance(raw.get("sources"), list):
+        return raw.get("strategy", {}), raw["sources"]
+
+    # Backward compatibility with V0.4 list format
+    if isinstance(raw, list):
+        legacy = []
+        for s in raw:
+            legacy.append({
+                **s,
+                "status": "active",
+                "source_role": "secondary_interpreter",
+                "evidence_class": "interpretation",
+                "platform": "rss",
+                "language": "EN",
+                "knowledge_domains": s.get("topics", []),
+                "why_follow": "",
+                "expected_evidence": [],
+                "crawl": {
+                    "method": "rss",
+                    "url": s.get("url", ""),
+                    "detail_page": True
+                },
+                "filters": {"include": [], "exclude": []},
+                "quality_rules": {
+                    "minimum_specificity": 8,
+                    "minimum_evidence_density": 8,
+                    "prefer_primary_source": False,
+                    "require_one_of": []
+                },
+                "max_items_per_run": 1
+            })
+        return {}, legacy
+
+    raise ValueError("config/sources.json 格式无法识别")
+
+
+def http_get(url, timeout=15, max_bytes=1200000):
+    req = Request(url, headers={"User-Agent": USER_AGENT})
+    with urlopen(req, timeout=timeout) as resp:
+        data = resp.read(max_bytes)
+        charset = resp.headers.get_content_charset() or "utf-8"
+        return data.decode(charset, errors="ignore")
 
 
 def fetch_article_text(url):
     if not url:
         return ""
     try:
-        req = Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 PersonalIntelligenceBot/0.4.1"
-            }
-        )
-        with urlopen(req, timeout=12) as response:
-            raw = response.read(800000).decode("utf-8", errors="ignore")
+        raw = http_get(url)
         soup = BeautifulSoup(raw, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
+
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "noscript"]):
             tag.decompose()
 
         article = soup.find("article") or soup.find("main") or soup.body
         text = clean_html(str(article)) if article else ""
         return text[:ARTICLE_CHAR_LIMIT]
     except Exception as exc:
-        print(f"[WARN] 无法读取原网页，回退到RSS内容: {url} | {exc}")
+        print(f"[WARN] 详情页读取失败: {url} | {exc}")
         return ""
 
 
-def get_source_material(entry):
-    rss = feed_text(entry)
-    page = ""
+def canonical_url(url):
+    try:
+        parsed = urlparse(url)
+        clean = parsed._replace(fragment="", query="").geturl()
+        return clean.rstrip("/")
+    except Exception:
+        return url
 
-    # RSS/Atom内容太短时尝试读取原网页；足够长也可补充网页，但只保留限定长度。
-    if len(rss) < 6000:
-        page = fetch_article_text(entry.get("link", ""))
 
-    best = page if len(page) > len(rss) else rss
+def make_item_id(source_id, url, title):
+    raw = f"{source_id}|{canonical_url(url)}|{title}".encode("utf-8")
+    return "itm_" + hashlib.sha1(raw).hexdigest()[:16]
+
+
+def safe_slug(value):
+    return hashlib.sha1(value.encode("utf-8")).hexdigest()[:12]
+
+
+def text_matches_any(text, terms):
+    if not terms:
+        return False
+    low = (text or "").lower()
+    return any((term or "").lower() in low for term in terms if term)
+
+
+def prefilter_candidate(source, title, url):
+    filters = source.get("filters", {})
+    includes = filters.get("include", [])
+    excludes = filters.get("exclude", [])
+
+    haystack = f"{title} {url}"
+
+    if excludes and text_matches_any(haystack, excludes):
+        return False
+
+    # Include规则作为软过滤：
+    # 若标题/URL命中则优先；若完全不命中也不直接丢掉，
+    # 避免页面标题没有显式关键词导致漏掉好内容。
+    return True
+
+
+# ---------------------------------------------------------------------
+# Collectors
+# ---------------------------------------------------------------------
+
+def collect_feed_source(source, processed):
+    crawl = source.get("crawl", {})
+    url = crawl.get("url", "")
+    feed = feedparser.parse(url)
+
+    if getattr(feed, "bozo", False):
+        print(f"[WARN] Feed解析异常: {source.get('name')} | {feed.bozo_exception}")
+
+    candidates = []
+    limit = max(source.get("max_items_per_run", 1) * 5, 5)
+
+    for entry in feed.entries[:limit]:
+        link = canonical_url(entry.get("link", ""))
+        title = clean_html(entry.get("title", "")).strip()
+        published = entry.get("published", entry.get("updated", ""))
+        uid = entry.get("id") or make_item_id(source.get("id", ""), link, title)
+
+        if uid in processed:
+            continue
+
+        rss_parts = []
+        if entry.get("summary"):
+            rss_parts.append(clean_html(entry.get("summary")))
+        for content in entry.get("content", []):
+            value = content.get("value", "")
+            if value:
+                rss_parts.append(clean_html(value))
+
+        rss_text = "\n\n".join(x for x in rss_parts if x).strip()
+
+        if not prefilter_candidate(source, title, link):
+            continue
+
+        candidates.append({
+            "id": uid,
+            "source": source,
+            "title": title,
+            "url": link,
+            "published": published,
+            "discovery_text": rss_text[:ARTICLE_CHAR_LIMIT],
+            "discovery_method": crawl.get("method", "rss")
+        })
+
+    return candidates
+
+
+def is_probable_article_link(source, href, text):
+    if not href:
+        return False
+
+    href = canonical_url(href)
+    if href.startswith("mailto:") or href.startswith("javascript:"):
+        return False
+
+    crawl = source.get("crawl", {})
+    base = crawl.get("url", "")
+    scope = crawl.get("link_scope")
+
+    abs_url = urljoin(base, href)
+    parsed_base = urlparse(base)
+    parsed_link = urlparse(abs_url)
+
+    if parsed_base.netloc and parsed_link.netloc != parsed_base.netloc:
+        return False
+
+    if scope and scope not in parsed_link.path:
+        return False
+
+    bad_suffixes = (
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg",
+        ".pdf", ".zip", ".xml", ".json", ".rss", ".atom"
+    )
+    if parsed_link.path.lower().endswith(bad_suffixes):
+        return False
+
+    if abs_url.rstrip("/") == base.rstrip("/"):
+        return False
+
+    visible = (text or "").strip()
+    if len(visible) < 4:
+        return False
+
+    return True
+
+
+def collect_index_source(source, processed):
+    crawl = source.get("crawl", {})
+    index_url = crawl.get("url", "")
+
+    try:
+        raw = http_get(index_url)
+    except Exception as exc:
+        print(f"[WARN] 列表页读取失败: {source.get('name')} | {exc}")
+        return []
+
+    soup = BeautifulSoup(raw, "html.parser")
+    seen_urls = set()
+    candidates = []
+
+    for a in soup.find_all("a", href=True):
+        title = clean_html(a.get_text(" ", strip=True))
+        href = a.get("href", "")
+
+        if not is_probable_article_link(source, href, title):
+            continue
+
+        link = canonical_url(urljoin(index_url, href))
+        if link in seen_urls:
+            continue
+        seen_urls.add(link)
+
+        if not prefilter_candidate(source, title, link):
+            continue
+
+        uid = make_item_id(source.get("id", ""), link, title)
+        if uid in processed:
+            continue
+
+        candidates.append({
+            "id": uid,
+            "source": source,
+            "title": title,
+            "url": link,
+            "published": "",
+            "discovery_text": "",
+            "discovery_method": "index_page"
+        })
+
+        if len(candidates) >= INDEX_MAX_LINKS:
+            break
+
+    return candidates
+
+
+def collect_source(source, processed):
+    if source.get("status", "active") != "active":
+        return []
+
+    method = source.get("crawl", {}).get("method", "rss")
+
+    if method in ("rss", "atom"):
+        return collect_feed_source(source, processed)
+
+    if method == "index_page":
+        return collect_index_source(source, processed)
+
+    print(f"[WARN] 尚未支持 crawl.method={method}: {source.get('name')}")
+    return []
+
+
+def choose_candidates(strategy, sources, processed):
+    source_queues = []
+
+    for source in sources:
+        queue = collect_source(source, processed)
+        if queue:
+            source_queues.append({
+                "source": source,
+                "queue": queue,
+                "cursor": 0
+            })
+            print(f"[DISCOVER] {source.get('name')}: {len(queue)} 条候选")
+        else:
+            print(f"[DISCOVER] {source.get('name')}: 0 条新候选")
+
+    max_total = min(
+        MAX_NEW_ITEMS,
+        int(strategy.get("max_items_per_day", MAX_NEW_ITEMS))
+    )
+
+    if not source_queues or max_total <= 0:
+        return []
+
+    target_mix = strategy.get("target_mix", {})
+    selected = []
+    selected_per_source = {}
+
+    # 第一轮：优先按 evidence_class 的目标配比选
+    classes = ["primary_evidence", "builder_operator", "interpretation", "venture"]
+    class_targets = {}
+    remaining = max_total
+
+    for i, cls in enumerate(classes):
+        if i == len(classes) - 1:
+            class_targets[cls] = remaining
+        else:
+            n = round(max_total * float(target_mix.get(cls, 0)))
+            n = max(0, min(n, remaining))
+            class_targets[cls] = n
+            remaining -= n
+
+    def take_from_class(cls, needed):
+        nonlocal selected
+        if needed <= 0:
+            return
+
+        made_progress = True
+        while needed > 0 and made_progress and len(selected) < max_total:
+            made_progress = False
+            for sq in source_queues:
+                source = sq["source"]
+                if source.get("evidence_class") != cls:
+                    continue
+
+                sid = source.get("id", source.get("name", ""))
+                source_limit = min(
+                    int(strategy.get("max_items_per_source", 1)),
+                    int(source.get("max_items_per_run", 1))
+                )
+                if selected_per_source.get(sid, 0) >= source_limit:
+                    continue
+
+                if sq["cursor"] >= len(sq["queue"]):
+                    continue
+
+                selected.append(sq["queue"][sq["cursor"]])
+                sq["cursor"] += 1
+                selected_per_source[sid] = selected_per_source.get(sid, 0) + 1
+                needed -= 1
+                made_progress = True
+
+                if needed <= 0 or len(selected) >= max_total:
+                    break
+
+    for cls in classes:
+        take_from_class(cls, class_targets.get(cls, 0))
+
+    # 第二轮：如果目标配比某类缺货，按来源轮转补齐
+    made_progress = True
+    while len(selected) < max_total and made_progress:
+        made_progress = False
+        for sq in source_queues:
+            source = sq["source"]
+            sid = source.get("id", source.get("name", ""))
+            source_limit = min(
+                int(strategy.get("max_items_per_source", 1)),
+                int(source.get("max_items_per_run", 1))
+            )
+            if selected_per_source.get(sid, 0) >= source_limit:
+                continue
+            if sq["cursor"] >= len(sq["queue"]):
+                continue
+
+            selected.append(sq["queue"][sq["cursor"]])
+            sq["cursor"] += 1
+            selected_per_source[sid] = selected_per_source.get(sid, 0) + 1
+            made_progress = True
+
+            if len(selected) >= max_total:
+                break
+
+    return selected
+
+
+# ---------------------------------------------------------------------
+# Evidence analysis
+# ---------------------------------------------------------------------
+
+def build_source_material(candidate):
+    source = candidate["source"]
+    crawl = source.get("crawl", {})
+    discovery_text = candidate.get("discovery_text", "")
+
+    page_text = ""
+    if crawl.get("detail_page", True):
+        page_text = fetch_article_text(candidate.get("url", ""))
+
+    best = page_text if len(page_text) > len(discovery_text) else discovery_text
+
     return {
-        "rss_text": rss[:ARTICLE_CHAR_LIMIT],
-        "page_text": page[:ARTICLE_CHAR_LIMIT],
         "analysis_text": best[:ARTICLE_CHAR_LIMIT],
+        "page_text": page_text[:ARTICLE_CHAR_LIMIT],
+        "discovery_text": discovery_text[:ARTICLE_CHAR_LIMIT],
         "source_depth": (
             "full_page_or_long_feed" if len(best) >= 5000
             else "partial_feed_or_excerpt"
@@ -555,19 +837,46 @@ def get_source_material(entry):
     }
 
 
-def calculate_pis(scores):
-    total = sum(scores.values())
+def base_pis(scores):
+    return sum(scores.values())
 
-    # 具体性/证据密度硬性约束，防止“正确废话”拿高分。
-    specificity = scores["specificity"]
-    evidence_density = scores["evidence_density"]
 
-    if specificity < 6 and evidence_density < 6:
-        return min(total, 49)
-    if specificity < 8 or evidence_density < 8:
-        return min(total, 64)
+def apply_quality_rules(raw, source):
+    pis = base_pis(raw["scores"])
+    specificity = raw["scores"]["specificity"]
+    density = raw["scores"]["evidence_density"]
 
-    return total
+    # 全局硬约束
+    if specificity < 6 and density < 6:
+        pis = min(pis, 49)
+    elif specificity < 8 or density < 8:
+        pis = min(pis, 64)
+
+    # 来源级阈值
+    rules = source.get("quality_rules", {})
+    min_spec = int(rules.get("minimum_specificity", 0))
+    min_density = int(rules.get("minimum_evidence_density", 0))
+
+    if specificity < min_spec or density < min_density:
+        pis = min(pis, 64)
+
+    # 来源期望证据校验
+    required_types = set(rules.get("require_one_of", []))
+    detected = set(raw.get("evidence_types_detected", []))
+
+    if required_types and not (required_types & detected):
+        pis = min(pis, 49)
+
+    evidence = raw["evidence"]
+    evidence_count = (
+        len(evidence["concrete_facts"])
+        + len(evidence["numbers_metrics"])
+        + len(evidence["mechanism_steps"])
+    )
+    if evidence_count == 0:
+        pis = min(pis, 49)
+
+    return pis
 
 
 def get_tier(pis):
@@ -582,59 +891,55 @@ def get_tier(pis):
     return "Drop"
 
 
-def safe_slug(value):
-    return hashlib.sha1(value.encode("utf-8")).hexdigest()[:12]
+def analyze_item(client, candidate, material):
+    source = candidate["source"]
 
+    source_context = {
+        "name": source.get("name"),
+        "source_role": source.get("source_role"),
+        "evidence_class": source.get("evidence_class"),
+        "why_follow": source.get("why_follow"),
+        "knowledge_domains": source.get("knowledge_domains", []),
+        "expected_evidence": source.get("expected_evidence", []),
+        "quality_rules": source.get("quality_rules", {})
+    }
 
-def analyze(client, source, entry, material):
     prompt = f"""
-来源：{source.get('name', '')}
-原始链接：{entry.get('link', '')}
-发布时间：{entry.get('published', entry.get('updated', ''))}
-内容深度：{material['source_depth']}
+【来源配置】
+{json.dumps(source_context, ensure_ascii=False, indent=2)}
 
-以下是系统当前能获取到的原始材料。
-如果只是RSS摘要，请明确证据有限，不要假装读到了全文。
+【文章元信息】
+标题：{candidate.get('title','')}
+原始链接：{candidate.get('url','')}
+发布时间：{candidate.get('published','')}
+发现方式：{candidate.get('discovery_method','')}
+材料完整度：{material.get('source_depth','')}
 
---- 原始材料开始 ---
-{material['analysis_text']}
---- 原始材料结束 ---
+【当前可获得的原始材料】
+--- START ---
+{material.get('analysis_text','')}
+--- END ---
 """
 
     response = client.responses.create(
         model=MODEL,
-        instructions=INSTRUCTIONS,
+        instructions=ITEM_INSTRUCTIONS,
         input=prompt,
         text={
             "format": {
                 "type": "json_schema",
-                "name": "evidence_first_item_v041",
+                "name": "evidence_first_item_v05",
                 "strict": True,
-                "schema": SCHEMA
+                "schema": ITEM_SCHEMA
             }
         },
         store=False
     )
 
     raw = json.loads(response.output_text)
-    pis = calculate_pis(raw["scores"])
+    pis = apply_quality_rules(raw, source)
     tier = get_tier(pis)
     keep = pis >= 50
-
-    action = raw["action_type"] if keep else "IGNORE"
-
-    # 没有任何证据的文章直接Drop。
-    evidence = raw["evidence"]
-    evidence_count = (
-        len(evidence["concrete_facts"])
-        + len(evidence["numbers_metrics"])
-        + len(evidence["mechanism_steps"])
-    )
-    if evidence_count == 0:
-        keep = False
-        pis = min(pis, 49)
-        tier = "Drop"
-        action = "IGNORE"
 
     return {
         "analysis_version": ANALYSIS_VERSION,
@@ -647,19 +952,21 @@ def analyze(client, source, entry, material):
         "summary_zh": raw["summary_zh"],
         "core_judgment": raw["core_judgment"],
         "why_it_matters": raw["why_it_matters"],
+        "evidence_types_detected": raw["evidence_types_detected"],
         "evidence": raw["evidence"],
         "claim_map": raw["claim_map"],
         "relation_to_me": raw["relation_to_me"],
         "why_read_original": raw["why_read_original"],
         "original_reading_focus": raw["original_reading_focus"],
         "information_type": raw["information_type"],
-        "action_type": action,
+        "action_type": raw["action_type"] if keep else "IGNORE",
         "confidence": raw["confidence"],
         "counterpoint": raw["counterpoint"],
         "asset_type": raw["asset_type"],
         "drop_reason": raw["drop_reason"],
         "source_depth": material["source_depth"]
     }
+
 
 # ---------------------------------------------------------------------
 # Detail pages
@@ -679,8 +986,9 @@ def render_detail_page(item):
         f"原文：[{item.get('title_original','打开原文')}]({item.get('url','')})",
         "",
         f"来源：{item.get('source_name','')}  ",
-        f"发布时间：{item.get('published','')}  ",
-        f"材料完整度：{a.get('source_depth','')}",
+        f"来源角色：{item.get('source_role','')}  ",
+        f"证据类别：{item.get('evidence_class','')}  ",
+        f"材料完整度：{a.get('source_depth','')}  ",
         "",
         "## 1｜这篇内容真正提供了什么",
         "",
@@ -688,9 +996,16 @@ def render_detail_page(item):
         "",
         f"**判断：** {a['core_judgment']}",
         "",
-        "## 2｜关键证据",
+        "## 2｜检测到的证据类型",
         ""
     ]
+
+    if a.get("evidence_types_detected"):
+        lines += [f"- `{x}`" for x in a["evidence_types_detected"]]
+    else:
+        lines += ["- 未检测到来源期望的核心证据类型"]
+
+    lines += ["", "## 3｜关键证据", ""]
 
     if ev["concrete_facts"]:
         lines += ["### 具体事实", ""]
@@ -708,7 +1023,7 @@ def render_detail_page(item):
         lines.append("")
 
     lines += [
-        "## 3｜案例过程",
+        "## 4｜案例过程",
         "",
         f"**主体：** {case['actor']}",
         "",
@@ -726,7 +1041,7 @@ def render_detail_page(item):
         "",
         f"**失败 / 限制：** {case['failure_limits']}",
         "",
-        "## 4｜事实、解释与推断分开看",
+        "## 5｜事实、解释与推断分开看",
         "",
         "### 原文明示/报告的事实"
     ]
@@ -741,7 +1056,7 @@ def render_detail_page(item):
 
     lines += [
         "",
-        "## 5｜为什么与你有关",
+        "## 6｜为什么与你有关",
         "",
         f"**当前工作：** {a['relation_to_me']['current_work']}",
         "",
@@ -749,7 +1064,7 @@ def render_detail_page(item):
         "",
         f"**长期价值：** {a['relation_to_me']['long_term_value']}",
         "",
-        "## 6｜要不要看原文",
+        "## 7｜要不要看原文",
         "",
         a["why_read_original"],
         ""
@@ -763,7 +1078,7 @@ def render_detail_page(item):
     lines += [
         f"**[→ 打开原始材料]({item.get('url','')})**",
         "",
-        "## 7｜反方与限制",
+        "## 8｜反方与限制",
         "",
         a["counterpoint"]
     ]
@@ -778,22 +1093,14 @@ def write_detail_page(item):
     path.write_text(render_detail_page(item), encoding="utf-8")
     return f"details/{filename}"
 
+
 # ---------------------------------------------------------------------
-# Event clustering helpers
+# Event clustering
 # ---------------------------------------------------------------------
 
 def make_event_id(member_ids):
     raw = "|".join(sorted(member_ids)).encode("utf-8")
     return "evt_" + hashlib.sha1(raw).hexdigest()[:12]
-
-
-def cluster_candidate_items(items):
-    candidates = []
-    for item in items:
-        a = item.get("analysis", {})
-        if a.get("keep") and a.get("pis", 0) >= 50:
-            candidates.append(item)
-    return candidates[-CLUSTER_MAX_ITEMS:]
 
 
 def singleton_event(item):
@@ -829,9 +1136,20 @@ def singleton_event(item):
     }
 
 
-def build_cluster_payload(items):
+def cluster_items(client, items):
+    candidates = [
+        x for x in items
+        if x.get("analysis", {}).get("keep")
+        and x.get("analysis", {}).get("pis", 0) >= 50
+    ][-CLUSTER_MAX_ITEMS:]
+
+    if not candidates:
+        return []
+    if len(candidates) == 1:
+        return [singleton_event(candidates[0])]
+
     payload = []
-    for item in items:
+    for item in candidates:
         a = item["analysis"]
         payload.append({
             "id": item["id"],
@@ -841,23 +1159,11 @@ def build_cluster_payload(items):
             "knowledge_domain": a["knowledge_domain"],
             "summary": a["summary_zh"],
             "judgment": a["core_judgment"],
+            "evidence_types": a.get("evidence_types_detected", []),
             "concrete_facts": a["evidence"]["concrete_facts"][:5],
             "numbers_metrics": a["evidence"]["numbers_metrics"][:5],
             "mechanism_steps": a["evidence"]["mechanism_steps"][:5]
         })
-    return payload
-
-
-def cluster_items(client, items):
-    candidates = cluster_candidate_items(items)
-    if not candidates:
-        return []
-    if len(candidates) == 1:
-        return [singleton_event(candidates[0])]
-
-    payload = build_cluster_payload(candidates)
-    valid_ids = {x["id"] for x in payload}
-    item_map = {x["id"]: x for x in candidates}
 
     response = client.responses.create(
         model=MODEL,
@@ -866,25 +1172,28 @@ def cluster_items(client, items):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "evidence_event_clusters_v041",
+                "name": "event_clusters_v05",
                 "strict": True,
                 "schema": CLUSTER_SCHEMA
             }
         },
         store=False
     )
-    raw = json.loads(response.output_text)
 
-    events = []
+    raw = json.loads(response.output_text)
+    valid_ids = {x["id"] for x in payload}
+    item_map = {x["id"]: x for x in candidates}
     assigned = set()
+    events = []
 
     for c in raw["clusters"]:
         member_ids = [x for x in c["member_ids"] if x in valid_ids and x not in assigned]
         if not member_ids:
             continue
-        assigned.update(member_ids)
 
+        assigned.update(member_ids)
         member_items = [item_map[x] for x in member_ids]
+
         sources = []
         scores = []
         for item in member_items:
@@ -946,9 +1255,11 @@ def attach_event_metadata(items, events):
                 "cluster_size": event["member_count"],
                 "is_cross_source": event["is_cross_source"]
             }
+
     for item in items:
         if item["id"] in lookup:
             item["event"] = lookup[item["id"]]
+
 
 # ---------------------------------------------------------------------
 # Themes
@@ -974,39 +1285,58 @@ def build_themes(client, events):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "research_themes_v041",
+                "name": "themes_v05",
                 "strict": True,
                 "schema": THEME_SCHEMA
             }
         },
         store=False
     )
+
     result = json.loads(response.output_text)
     valid_ids = {e["event_id"] for e in events}
-
     themes = []
+
     for t in result["themes"]:
         related = [x for x in t["related_event_ids"] if x in valid_ids]
         if len(related) < 2:
             continue
-        t["theme_id"] = "theme_" + hashlib.sha1("|".join(sorted(related)).encode()).hexdigest()[:12]
+        t["theme_id"] = "theme_" + hashlib.sha1(
+            "|".join(sorted(related)).encode()
+        ).hexdigest()[:12]
         t["related_event_ids"] = related
         t["related_event_count"] = len(related)
         themes.append(t)
+
     return themes
+
 
 # ---------------------------------------------------------------------
 # Daily Brief
 # ---------------------------------------------------------------------
 
 def select_brief_events(events):
-    eligible = [e for e in events if e["event_tier"] in ("Immediate", "Daily", "Weekly")]
+    eligible = [
+        e for e in events
+        if e["event_tier"] in ("Immediate", "Daily", "Weekly")
+    ]
     eligible.sort(key=lambda x: x["event_pis"], reverse=True)
     return eligible[:BRIEF_MAX_EVENTS]
 
 
-def build_brief_payload(events):
-    return [{
+def generate_daily_brief(client, events, items):
+    selected = select_brief_events(events)
+    item_map = {i["id"]: i for i in items}
+    event_map = {e["event_id"]: e for e in events}
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if not selected:
+        return (
+            f"# Evidence-first Daily Intelligence｜{today}\n\n"
+            "今天没有发现达到 Weekly 以上门槛的新事件。\n"
+        )
+
+    payload = [{
         "event_id": e["event_id"],
         "event_title": e["event_title"],
         "event_pis": e["event_pis"],
@@ -1016,109 +1346,7 @@ def build_brief_payload(events):
         "combined_judgment": e["combined_judgment"],
         "contradictions": e["contradictions"],
         "source_names": e["source_names"]
-    } for e in select_brief_events(events)]
-
-
-def render_brief(brief, events, items):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    event_map = {e["event_id"]: e for e in events}
-    item_map = {i["id"]: i for i in items}
-
-    lines = [
-        f"# Evidence-first Daily Intelligence｜{today}",
-        "",
-        f"> **{brief['headline']}**",
-        "",
-        brief["overview"],
-        "",
-        "## 01｜今天最多看这3条",
-        ""
-    ]
-
-    for idx, top in enumerate(brief["top_items"][:3], 1):
-        e = event_map.get(top["event_id"])
-        if not e:
-            continue
-
-        lines += [
-            f"### {idx}. {top['title']}",
-            "",
-            f"**为什么进入Top 3**  \n{top['why_top']}",
-            "",
-            "**最关键的证据**"
-        ]
-        for evidence in e.get("key_evidence", [])[:5]:
-            lines.append(f"- {evidence}")
-
-        lines += [
-            "",
-            f"**我该更新什么判断**  \n{top['judgment_update']}",
-            "",
-            f"**对我有什么实际价值**  \n{top['for_me']}",
-            "",
-            f"**还不能确认什么**  \n{top['still_uncertain']}",
-            ""
-        ]
-
-        member_items = [item_map[iid] for iid in e["member_ids"] if iid in item_map]
-        for item in member_items:
-            detail_path = item.get("detail_path")
-            title = item.get("title_original", "原始材料")
-            url = item.get("url", "")
-            if detail_path:
-                lines.append(f"- [展开证据卡：{item.get('source_name','')}](./{detail_path})")
-            if url:
-                lines.append(f"- [打开原文：{title}]({url})")
-        lines.append("")
-
-    asset = brief["method_asset"]
-    lines += [
-        "## 02｜今天最值得沉淀的一个方法",
-        "",
-        f"### {asset['asset_name']}",
-        "",
-        f"**为什么现在值得做：** {asset['why_now']}",
-        "",
-        f"**最小下一步：** {asset['next_step']}",
-        "",
-        "## 03｜我今天可以做什么",
-        ""
-    ]
-    for action in brief["actions"][:3]:
-        lines.append(f"- {action}")
-
-    lines += [
-        "",
-        "---",
-        "",
-        "> 使用方式：先扫Top 3；只有当关键证据真正与你相关时，再点“展开证据卡”或原文。"
-    ]
-    return "\n".join(lines)
-
-
-def fallback_brief(events, items):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    item_map = {i["id"]: i for i in items}
-    lines = [f"# Evidence-first Daily Intelligence｜{today}", "", "## 今天最高价值事件", ""]
-    for e in select_brief_events(events)[:3]:
-        lines += [f"### {e['event_title']}", ""]
-        for x in e.get("key_evidence", [])[:5]:
-            lines.append(f"- {x}")
-        lines += ["", f"**判断：** {e['combined_judgment']}", ""]
-        for iid in e["member_ids"]:
-            item = item_map.get(iid)
-            if item:
-                if item.get("detail_path"):
-                    lines.append(f"- [展开证据卡](./{item['detail_path']})")
-                lines.append(f"- [原文]({item.get('url','')})")
-        lines.append("")
-    return "\n".join(lines)
-
-
-def generate_daily_brief(client, events, items):
-    payload = build_brief_payload(events)
-    if not payload:
-        return fallback_brief(events, items)
+    } for e in selected]
 
     try:
         response = client.responses.create(
@@ -1128,7 +1356,7 @@ def generate_daily_brief(client, events, items):
             text={
                 "format": {
                     "type": "json_schema",
-                    "name": "evidence_daily_brief_v041",
+                    "name": "daily_brief_v05",
                     "strict": True,
                     "schema": BRIEF_SCHEMA
                 }
@@ -1136,47 +1364,101 @@ def generate_daily_brief(client, events, items):
             store=False
         )
         brief = json.loads(response.output_text)
-        return render_brief(brief, events, items)
+
+        lines = [
+            f"# Evidence-first Daily Intelligence｜{today}",
+            "",
+            f"> **{brief['headline']}**",
+            "",
+            brief["overview"],
+            "",
+            "## 01｜今天最多看这3条",
+            ""
+        ]
+
+        for idx, top in enumerate(brief["top_items"][:3], 1):
+            event = event_map.get(top["event_id"])
+            if not event:
+                continue
+
+            lines += [
+                f"### {idx}. {top['title']}",
+                "",
+                f"**为什么进入Top 3**  \n{top['why_top']}",
+                "",
+                "**最关键的证据**"
+            ]
+
+            for evidence in event.get("key_evidence", [])[:5]:
+                lines.append(f"- {evidence}")
+
+            lines += [
+                "",
+                f"**我该更新什么判断**  \n{top['judgment_update']}",
+                "",
+                f"**对我有什么实际价值**  \n{top['for_me']}",
+                "",
+                f"**还不能确认什么**  \n{top['still_uncertain']}",
+                ""
+            ]
+
+            for iid in event["member_ids"]:
+                item = item_map.get(iid)
+                if not item:
+                    continue
+                if item.get("detail_path"):
+                    lines.append(
+                        f"- [展开证据卡：{item.get('source_name','')}]"
+                        f"(./{item['detail_path']})"
+                    )
+                if item.get("url"):
+                    lines.append(
+                        f"- [打开原文：{item.get('title_original','原始材料')}]"
+                        f"({item['url']})"
+                    )
+            lines.append("")
+
+        asset = brief["method_asset"]
+        lines += [
+            "## 02｜今天最值得沉淀的一个方法",
+            "",
+            f"### {asset['asset_name']}",
+            "",
+            f"**为什么现在值得做：** {asset['why_now']}",
+            "",
+            f"**最小下一步：** {asset['next_step']}",
+            "",
+            "## 03｜我今天可以做什么",
+            ""
+        ]
+
+        for action in brief["actions"][:3]:
+            lines.append(f"- {action}")
+
+        lines += [
+            "",
+            "---",
+            "",
+            "> 使用方式：先扫Top 3；只有关键证据真正与你相关时，再下钻证据卡和原文。"
+        ]
+
+        return "\n".join(lines)
+
     except Exception as exc:
         print(f"[WARN] Brief生成失败，使用降级版: {exc}")
-        return fallback_brief(events, items)
+
+        lines = [f"# Evidence-first Daily Intelligence｜{today}", ""]
+        for event in selected[:3]:
+            lines += [f"## {event['event_title']}", ""]
+            for x in event.get("key_evidence", [])[:5]:
+                lines.append(f"- {x}")
+            lines += ["", f"**判断：** {event['combined_judgment']}", ""]
+        return "\n".join(lines)
+
 
 # ---------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------
-
-def collect_candidates(sources, processed):
-    queues = []
-
-    for source in sources:
-        feed = feedparser.parse(source["url"])
-        if getattr(feed, "bozo", False):
-            print(f"[WARN] Feed解析异常: {source.get('name','')} | {feed.bozo_exception}")
-
-        queue = []
-        for entry in feed.entries:
-            uid = entry.get("id") or entry.get("link") or entry.get("title")
-            if uid and uid not in processed:
-                queue.append((source, entry, uid))
-        if queue:
-            queues.append(queue)
-
-    candidates = []
-    round_index = 0
-    while len(candidates) < MAX_NEW_ITEMS:
-        added = False
-        for queue in queues:
-            if round_index < len(queue):
-                candidates.append(queue[round_index])
-                added = True
-                if len(candidates) >= MAX_NEW_ITEMS:
-                    break
-        if not added:
-            break
-        round_index += 1
-
-    return candidates
-
 
 def main(mode="daily"):
     if not os.getenv("OPENAI_API_KEY"):
@@ -1196,32 +1478,52 @@ def main(mode="daily"):
             save_json(THEMES_PATH, old_themes)
         return
 
-    sources = load_json(SOURCES_PATH, [])
+    raw_sources = load_json(SOURCES_PATH, [])
+    strategy, sources = normalize_sources(raw_sources)
+
     items = load_json(ITEMS_PATH, [])
     processed = set(load_json(PROCESSED_PATH, []))
 
-    candidates = collect_candidates(sources, processed)
-    print(f"本次处理 {len(candidates)} 条新内容。")
+    candidates = choose_candidates(strategy, sources, processed)
+
+    print("")
+    print(f"本次将分析 {len(candidates)} 条内容：")
+    for c in candidates:
+        print(
+            f"- [{c['source'].get('evidence_class')}] "
+            f"{c['source'].get('name')} | {c.get('title')}"
+        )
+    print("")
 
     run_time = datetime.now(timezone.utc).isoformat()
 
-    for source, entry, uid in candidates:
-        print(f"读取: {entry.get('title','(无标题)')}")
-        material = get_source_material(entry)
+    for candidate in candidates:
+        source = candidate["source"]
+        print(f"[READ] {source.get('name')} | {candidate.get('title')}")
+
+        material = build_source_material(candidate)
+
+        if not material["analysis_text"].strip():
+            print("[WARN] 无可分析正文，跳过")
+            continue
 
         try:
-            analysis = analyze(client, source, entry, material)
+            analysis = analyze_item(client, candidate, material)
         except Exception as exc:
             print(f"[ERROR] 分析失败，跳过: {exc}")
             continue
 
         item = {
-            "id": uid,
+            "id": candidate["id"],
             "source_id": source.get("id", ""),
             "source_name": source.get("name", ""),
-            "title_original": entry.get("title", ""),
-            "url": entry.get("link", ""),
-            "published": entry.get("published", entry.get("updated", "")),
+            "source_role": source.get("source_role", ""),
+            "evidence_class": source.get("evidence_class", ""),
+            "platform": source.get("platform", ""),
+            "title_original": candidate.get("title", ""),
+            "url": candidate.get("url", ""),
+            "published": candidate.get("published", ""),
+            "discovery_method": candidate.get("discovery_method", ""),
             "processed_at_utc": run_time,
             "model": MODEL,
             "analysis_version": ANALYSIS_VERSION,
@@ -1230,26 +1532,23 @@ def main(mode="daily"):
 
         item["detail_path"] = write_detail_page(item)
         items.append(item)
-        processed.add(uid)
+        processed.add(candidate["id"])
 
         print(
             f"  -> PIS {analysis['pis']} / {analysis['tier']} | "
             f"具体性 {analysis['scores']['specificity']} | "
-            f"证据密度 {analysis['scores']['evidence_density']}"
+            f"证据密度 {analysis['scores']['evidence_density']} | "
+            f"证据类型 {analysis['evidence_types_detected']}"
         )
 
     old_events = load_json(EVENTS_PATH, [])
+
     try:
         events = cluster_items(client, items)
         attach_event_metadata(items, events)
     except Exception as exc:
         print(f"[WARN] 事件聚类失败，保留旧结果: {exc}")
         events = old_events
-
-    # 为已有V0.4.1项目补写detail页。
-    for item in items:
-        if item.get("analysis", {}).get("analysis_version") == ANALYSIS_VERSION and not item.get("detail_path"):
-            item["detail_path"] = write_detail_page(item)
 
     brief = generate_daily_brief(client, events, items)
 
@@ -1258,9 +1557,10 @@ def main(mode="daily"):
     save_json(EVENTS_PATH, events)
     DAILY_BRIEF_PATH.write_text(brief, encoding="utf-8")
 
+    print("")
     print(
-        f"完成：{len(items)}条内容，{len(events)}个事件，"
-        f"Brief与证据卡已更新。"
+        f"完成：累计 {len(items)} 条内容，"
+        f"{len(events)} 个事件，Daily Brief 已更新。"
     )
 
 
