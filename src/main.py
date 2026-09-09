@@ -1,5 +1,5 @@
-# Personal Intelligence System V0.4
-# Daily Brief output layer
+# Personal Intelligence System V0.4.1
+# Evidence-first: source detail extraction, evidence scoring, drill-down pages, and Daily Brief.
 
 import argparse
 import hashlib
@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 import feedparser
 from bs4 import BeautifulSoup
@@ -20,12 +21,18 @@ PROCESSED_PATH = ROOT / "data" / "processed.json"
 EVENTS_PATH = ROOT / "data" / "events.json"
 THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
+DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.4"
+ANALYSIS_VERSION = "v0.4.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "5"))
+MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "3"))
 CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "15"))
-BRIEF_MAX_EVENTS = int(os.getenv("BRIEF_MAX_EVENTS", "6"))
+BRIEF_MAX_EVENTS = int(os.getenv("BRIEF_MAX_EVENTS", "5"))
+ARTICLE_CHAR_LIMIT = int(os.getenv("ARTICLE_CHAR_LIMIT", "18000"))
+
+# ---------------------------------------------------------------------
+# Evidence-first single-item analysis
+# ---------------------------------------------------------------------
 
 SCHEMA = {
     "type": "object",
@@ -33,18 +40,22 @@ SCHEMA = {
         "scores": {
             "type": "object",
             "properties": {
-                "enterprise_ai_value": {"type": "integer", "minimum": 0, "maximum": 30},
-                "practical_value": {"type": "integer", "minimum": 0, "maximum": 25},
-                "cognitive_upgrade": {"type": "integer", "minimum": 0, "maximum": 20},
-                "org_talent_value": {"type": "integer", "minimum": 0, "maximum": 15},
-                "information_quality": {"type": "integer", "minimum": 0, "maximum": 10}
+                "enterprise_ai_value": {"type": "integer", "minimum": 0, "maximum": 20},
+                "practical_value": {"type": "integer", "minimum": 0, "maximum": 15},
+                "cognitive_upgrade": {"type": "integer", "minimum": 0, "maximum": 15},
+                "org_talent_value": {"type": "integer", "minimum": 0, "maximum": 10},
+                "information_quality": {"type": "integer", "minimum": 0, "maximum": 10},
+                "specificity": {"type": "integer", "minimum": 0, "maximum": 15},
+                "evidence_density": {"type": "integer", "minimum": 0, "maximum": 15}
             },
             "required": [
                 "enterprise_ai_value",
                 "practical_value",
                 "cognitive_upgrade",
                 "org_talent_value",
-                "information_quality"
+                "information_quality",
+                "specificity",
+                "evidence_density"
             ],
             "additionalProperties": False
         },
@@ -64,6 +75,63 @@ SCHEMA = {
         "summary_zh": {"type": "string"},
         "core_judgment": {"type": "string"},
         "why_it_matters": {"type": "string"},
+        "evidence": {
+            "type": "object",
+            "properties": {
+                "concrete_facts": {"type": "array", "items": {"type": "string"}},
+                "numbers_metrics": {"type": "array", "items": {"type": "string"}},
+                "mechanism_steps": {"type": "array", "items": {"type": "string"}},
+                "named_entities": {"type": "array", "items": {"type": "string"}},
+                "case_details": {
+                    "type": "object",
+                    "properties": {
+                        "actor": {"type": "string"},
+                        "context": {"type": "string"},
+                        "problem": {"type": "string"},
+                        "ai_intervention": {"type": "string"},
+                        "workflow_change": {"type": "string"},
+                        "human_role": {"type": "string"},
+                        "outcome": {"type": "string"},
+                        "failure_limits": {"type": "string"}
+                    },
+                    "required": [
+                        "actor",
+                        "context",
+                        "problem",
+                        "ai_intervention",
+                        "workflow_change",
+                        "human_role",
+                        "outcome",
+                        "failure_limits"
+                    ],
+                    "additionalProperties": False
+                }
+            },
+            "required": [
+                "concrete_facts",
+                "numbers_metrics",
+                "mechanism_steps",
+                "named_entities",
+                "case_details"
+            ],
+            "additionalProperties": False
+        },
+        "claim_map": {
+            "type": "object",
+            "properties": {
+                "confirmed_or_reported_facts": {"type": "array", "items": {"type": "string"}},
+                "author_interpretations": {"type": "array", "items": {"type": "string"}},
+                "model_inferences": {"type": "array", "items": {"type": "string"}},
+                "unknowns": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": [
+                "confirmed_or_reported_facts",
+                "author_interpretations",
+                "model_inferences",
+                "unknowns"
+            ],
+            "additionalProperties": False
+        },
         "relation_to_me": {
             "type": "object",
             "properties": {
@@ -74,6 +142,8 @@ SCHEMA = {
             "required": ["current_work", "expert_growth", "long_term_value"],
             "additionalProperties": False
         },
+        "why_read_original": {"type": "string"},
+        "original_reading_focus": {"type": "array", "items": {"type": "string"}},
         "information_type": {
             "type": "string",
             "enum": ["事实", "研究发现", "案例", "作者观点", "推测", "混合"]
@@ -82,10 +152,7 @@ SCHEMA = {
             "type": "string",
             "enum": ["IGNORE", "READ", "SAVE", "APPLY", "DISCUSS", "BUILD"]
         },
-        "confidence": {
-            "type": "string",
-            "enum": ["high", "medium", "low"]
-        },
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
         "counterpoint": {"type": "string"},
         "asset_type": {
             "type": "string",
@@ -100,7 +167,11 @@ SCHEMA = {
         "summary_zh",
         "core_judgment",
         "why_it_matters",
+        "evidence",
+        "claim_map",
         "relation_to_me",
+        "why_read_original",
+        "original_reading_focus",
         "information_type",
         "action_type",
         "confidence",
@@ -111,77 +182,86 @@ SCHEMA = {
     "additionalProperties": False
 }
 
+INSTRUCTIONS = """
+你是 Evidence-first Personal Intelligence Advisor。
 
+我的方向：
+从人力资源与组织视角出发，成长为企业AI深度应用落地专家。
+我不需要更多“正确的AI观点”，我需要可以支撑判断的具体事实、企业案例、机制、数据、失败过程和工作流细节。
 
-THEME_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "themes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "theme_title": {"type": "string"},
-                    "research_question": {"type": "string"},
-                    "related_event_ids": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    },
-                    "synthesis": {"type": "string"},
-                    "current_judgment": {"type": "string"},
-                    "still_unknown": {"type": "string"},
-                    "asset_direction": {"type": "string"},
-                    "confidence": {
-                        "type": "string",
-                        "enum": ["high", "medium", "low"]
-                    }
-                },
-                "required": [
-                    "theme_title",
-                    "research_question",
-                    "related_event_ids",
-                    "synthesis",
-                    "current_judgment",
-                    "still_unknown",
-                    "asset_direction",
-                    "confidence"
-                ],
-                "additionalProperties": False
-            }
-        }
-    },
-    "required": ["themes"],
-    "additionalProperties": False
-}
+【最重要的原则】
+先抽取证据，再做判断。不要先想一个漂亮结论，再从原文中寻找支持。
 
-THEME_INSTRUCTIONS = """
-你负责把事件级信息提升为研究主题层。
+如果删掉企业名、人物、数字、流程、机制、失败细节后，内容只剩：
+“AI会改变工作”“企业要重视治理”“人机协同很重要”“Agent是未来”
+则这是正确的废话，应显著降分。
 
-输入不是文章，而是已经去重后的事件。
+【固定评分，共100分】
+enterprise_ai_value 0-20：
+是否帮助理解AI如何进入真实企业和业务。
 
-你的任务：
-1. 找出多个事件背后的共同研究问题；
-2. 不为了数量强行合并；
-3. 一个主题至少应包含两个事件，或者代表一个持续值得追踪的核心问题。
+practical_value 0-15：
+是否可以转化成实验、模板、方法或具体动作。
 
-好的主题：
-- Agent如何获得权限，以及何时主动请求人类介入？
-- 企业AI价值为什么从模型能力转向流程和组织能力？
-- AI时代管理者需要保留哪些判断能力？
+cognitive_upgrade 0-15：
+是否提供新机制、新反例或真正改变判断的证据。
 
-不好的主题：
-- AI新闻
-- Agent相关
-- 今天的AI进展
+org_talent_value 0-10：
+是否帮助理解岗位、管理、组织、人才与变革。
 
-输出重点：
-theme_title：高信息密度中文标题
-research_question：未来持续追踪的问题
-synthesis：多个事件组合后新增的理解
-current_judgment：当前阶段判断
-still_unknown：仍未解决的问题
-asset_direction：未来可以沉淀的方法论/产品资产
+information_quality 0-10：
+证据来源和可信度。
+
+specificity 0-15：
+有没有明确主体、任务、流程、工具、权限、动作、结果和失败细节。
+
+evidence_density 0-15：
+每单位内容中有多少可验证事实、数字、案例和机制，而不是评论和概念。
+
+【硬性上限】
+- specificity < 6 且 evidence_density < 6：总分应视为不超过49。
+- specificity < 8 或 evidence_density < 8：除非是重大一手研究，否则不应进入Daily。
+- 没有任何具体事实、数字、机制或案例：默认Drop。
+- 作者知名度不能加分。
+
+【证据输出】
+concrete_facts：
+只写原文明确报告/描述的事实，尽量包含主体、动作、对象、条件。
+
+numbers_metrics：
+把所有有解释价值的数字、比例、时间、成本、次数、规模、结果指标列出来。没有就返回空数组，禁止编造。
+
+mechanism_steps：
+如果原文描述了“怎么发生/怎么做”的过程，按步骤提炼。没有则返回空数组。
+
+case_details：
+尽可能还原“谁—什么背景—原问题—AI如何介入—流程怎么变—人做什么—结果—失败或限制”。
+原文没有的信息明确写“原文未提供”，不要补全。
+
+claim_map：
+必须区分：
+1. 原文明示的事实/报告；
+2. 作者解释；
+3. 你基于材料做的推断；
+4. 尚未知。
+
+【判断输出】
+core_judgment必须由证据推出。
+如果证据不足，不要用宏大结论包装。
+
+why_read_original：
+告诉我为什么值得点开原文；如果不值得，明确说“不需要阅读全文”。
+
+original_reading_focus：
+告诉我打开原文后重点找什么细节，而不是让我从头通读。
+
+目标：
+让我能够从日报快速扫读，并在真正重要的内容上继续下钻到细节和原始材料。
 """
+
+# ---------------------------------------------------------------------
+# Event clustering
+# ---------------------------------------------------------------------
 
 CLUSTER_SCHEMA = {
     "type": "object",
@@ -191,11 +271,7 @@ CLUSTER_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "member_ids": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "minItems": 1
-                    },
+                    "member_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
                     "event_title": {"type": "string"},
                     "event_type": {
                         "type": "string",
@@ -216,11 +292,9 @@ CLUSTER_SCHEMA = {
                     "combined_summary": {"type": "string"},
                     "combined_judgment": {"type": "string"},
                     "why_it_matters": {"type": "string"},
+                    "key_evidence": {"type": "array", "items": {"type": "string"}},
                     "contradictions": {"type": "string"},
-                    "confidence": {
-                        "type": "string",
-                        "enum": ["high", "medium", "low"]
-                    },
+                    "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
                     "recommended_action": {
                         "type": "string",
                         "enum": ["IGNORE", "READ", "SAVE", "APPLY", "DISCUSS", "BUILD"]
@@ -260,6 +334,7 @@ CLUSTER_SCHEMA = {
                     "combined_summary",
                     "combined_judgment",
                     "why_it_matters",
+                    "key_evidence",
                     "contradictions",
                     "confidence",
                     "recommended_action",
@@ -274,210 +349,135 @@ CLUSTER_SCHEMA = {
 }
 
 CLUSTER_INSTRUCTIONS = """
-你负责把多来源信息从“文章级”提升到“事件级”。
+把文章级信息聚合为事件级信息。
+只有描述同一底层事件、报告、企业案例、产品发布或实验时才合并。
+相似主题但底层事实不同，不要合并。
 
-你的首要任务是识别真正的跨来源重复，而不是把相似主题强行合并。
+聚合时优先保留：
+- 企业/机构/产品名称
+- 真实工作任务
+- 具体数字和指标
+- 实际流程
+- 技术或管理机制
+- 失败、反例和限制
 
-【什么可以合并】
-只有以下情况才可以放进同一事件：
-1. 描述同一个真实世界事件、事故、发布、研究、报告或企业案例；
-2. 不同作者围绕同一个底层事件提供不同层次解释；
-3. 一篇主要提供技术事实，另一篇以同一事件为核心提供组织、人才、商业或治理解释。
-
-例如：
-- Simon解释某个Agent事故的技术机制；
-- Ethan以同一个Agent事故为核心讨论企业应该何时让AI主动寻求人类介入；
-这两篇可以属于同一个事件，但必须保留各自独特贡献。
-
-【什么不能合并】
-不要仅仅因为两篇文章都谈：
-Agent、AI治理、未来工作、模型成本、组织变化
-就放到一起。
-如果底层事实、报告或案例不同，应保持为不同事件。
-
-【每个事件必须完成】
-1. event_title：用中文写一个高信息密度的事件标题；
-2. combined_summary：合并已确认事实，不把推测写成事实；
-3. combined_judgment：解释不同来源拼在一起后，我们多知道了什么；
-4. contradictions：说明来源之间的差异、证据缺口或冲突；
-5. unique_contributions：逐条说明每个来源的角色和独特贡献。
-
-目标：
-未来Daily Brief不应该告诉我“今天有5篇文章”，
-而应该告诉我“今天真正有3个值得知道的事件，以及不同来源各自补充了什么”。
+combined_judgment不能比成员材料更宏大。
+key_evidence必须是成员材料中已存在的具体证据。
 """
 
+# ---------------------------------------------------------------------
+# Weekly themes
+# ---------------------------------------------------------------------
+
+THEME_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "theme_title": {"type": "string"},
+                    "research_question": {"type": "string"},
+                    "related_event_ids": {"type": "array", "items": {"type": "string"}},
+                    "synthesis": {"type": "string"},
+                    "current_judgment": {"type": "string"},
+                    "still_unknown": {"type": "string"},
+                    "asset_direction": {"type": "string"},
+                    "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+                },
+                "required": [
+                    "theme_title",
+                    "research_question",
+                    "related_event_ids",
+                    "synthesis",
+                    "current_judgment",
+                    "still_unknown",
+                    "asset_direction",
+                    "confidence"
+                ],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["themes"],
+    "additionalProperties": False
+}
+
+THEME_INSTRUCTIONS = """
+把事件提升为研究主题。
+不要输出“AI治理”“Agent趋势”这类宽泛主题。
+主题必须是一个值得长期验证的具体问题，例如：
+“企业如何确定Agent必须暂停并请求人工授权的阈值？”
+优先围绕多个事件共享的机制、矛盾或证据缺口形成主题。
+"""
+
+# ---------------------------------------------------------------------
+# Daily Brief
+# ---------------------------------------------------------------------
 
 BRIEF_SCHEMA = {
     "type": "object",
     "properties": {
         "headline": {"type": "string"},
         "overview": {"type": "string"},
-        "judgment_updates": {
+        "top_items": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "event_id": {"type": "string"},
                     "title": {"type": "string"},
-                    "what_happened": {"type": "string"},
-                    "what_it_changes": {"type": "string"},
+                    "why_top": {"type": "string"},
+                    "judgment_update": {"type": "string"},
                     "for_me": {"type": "string"},
-                    "still_uncertain": {"type": "string"},
-                    "event_ids": {"type": "array", "items": {"type": "string"}}
+                    "still_uncertain": {"type": "string"}
                 },
-                "required": ["title","what_happened","what_it_changes","for_me","still_uncertain","event_ids"],
+                "required": [
+                    "event_id",
+                    "title",
+                    "why_top",
+                    "judgment_update",
+                    "for_me",
+                    "still_uncertain"
+                ],
                 "additionalProperties": False
             }
         },
-        "method_assets": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "asset_name": {"type": "string"},
-                    "why_now": {"type": "string"},
-                    "next_step": {"type": "string"}
-                },
-                "required": ["asset_name","why_now","next_step"],
-                "additionalProperties": False
-            }
+        "method_asset": {
+            "type": "object",
+            "properties": {
+                "asset_name": {"type": "string"},
+                "why_now": {"type": "string"},
+                "next_step": {"type": "string"}
+            },
+            "required": ["asset_name", "why_now", "next_step"],
+            "additionalProperties": False
         },
-        "actions": {"type": "array", "items": {"type": "string"}},
-        "watch_next": {"type": "array", "items": {"type": "string"}}
+        "actions": {"type": "array", "items": {"type": "string"}}
     },
-    "required": ["headline","overview","judgment_updates","method_assets","actions","watch_next"],
+    "required": ["headline", "overview", "top_items", "method_asset", "actions"],
     "additionalProperties": False
 }
 
 BRIEF_INSTRUCTIONS = """
-你负责生成我的每日AI企业转型简报。
-输入已经是去重后的事件，不要再做新闻列表。
+生成 Evidence-first Daily Intelligence。
 
-我的定位：
-从人力资源与组织视角出发，成为企业AI深度应用落地专家，关注AI技术 × 企业业务 × 组织与人才 × 创业机会。
+不要再写长篇抽象判断。最多3条。
 
-每日简报目标：
-1. 更新判断；
-2. 发现可转化为企业实践的方法；
-3. 识别值得继续验证的问题；
-4. 避免重复新闻和低价值热点。
+每条内容必须：
+1. 明确为什么能进入Top 3：因为有了什么新证据，而不是观点听起来正确；
+2. 判断更新必须由具体证据支持；
+3. 不确定性必须真实存在；
+4. 如果事件证据密度低，就不要选。
 
-原则：
-- 优先 Immediate / Daily，其次 Weekly；
-- Archive 只有在能补充重要背景时才使用；
-- 不把作者观点写成事实；
-- 明确不确定性；
-- 最多3条判断更新；
-- actions 最多3条，必须具体、可执行。
+日报只负责快速扫读。
+更完整的事实、数字、机制、案例过程和原文入口，会放在对应detail页面。
 """
 
-INSTRUCTIONS = """
-你是我的 Personal Intelligence Advisor（个人AI情报顾问）。
-
-你的任务不是帮我获取更多AI资讯，而是帮助我持续建立成为
-“AI时代企业转型实践专家”的认知、案例、方法论与机会判断。
-
-【我的定位】
-我希望连接：AI技术 × 企业业务 × 组织与人才。
-我的优势路径不是成为算法研究者，而是从人力资源、组织发展和真实企业场景出发，
-理解AI如何被深度嵌入工作、流程、岗位、管理和组织机制，并推动真正落地。
-
-【我的核心目标】
-1. 判断企业如何真正用AI创造价值，而非停留在工具使用；
-2. 理解AI如何改变工作、流程、岗位、管理模式和组织结构；
-3. 理解AI时代员工、管理者、HR和组织能力如何变化；
-4. 建立可复用的企业AI落地方法论；
-5. 建立自己的AI增强工作系统；
-6. 持续发现AI创业、企业服务与咨询机会；
-7. 保持对AI能力边界和未来社会变化的必要理解。
-
-【七类知识域】
-每条内容只能选择最主要的一类：
-- AI能力演进
-- 企业AI深度应用
-- AI时代组织变革
-- AI时代人才发展
-- AI个人工作系统
-- AI创业机会
-- 未来社会观察
-
-【固定评分规则】
-不要直接给总分。只给以下五项分数，Python会自动相加。
-
-1. enterprise_ai_value：0–30
-问题：这是否帮助我更好理解“AI如何改变企业”？
-高分：企业落地机制、工作重构、Agent进入真实流程、AI治理、AI战略与组织变化。
-低分：单纯模型发布、参数、热点新闻。
-
-2. practical_value：0–25
-问题：这是否能转化为真实实践、实验、案例或方法？
-高分：有明确场景、流程、做法、工具链、结果、失败经验。
-低分：抽象观点、宏观口号、没有可执行信息。
-
-3. cognitive_upgrade：0–20
-问题：这是否带来新的机制解释、反例、框架或判断？
-高分：改变我原有理解，或提供强解释力。
-低分：重复“AI会提高效率”“Agent是未来”等常识。
-
-4. org_talent_value：0–15
-问题：是否帮助理解人、岗位、管理、组织、人才或变革？
-注意：不是要求所有内容都与HR直接相关；纯技术但明显改变组织方式也可以得高分。
-
-5. information_quality：0–10
-问题：证据质量如何？
-高分：一手实验、真实企业案例、研究数据、原始材料。
-低分：二手转述、营销、无证据预测。
-
-【总分分层由程序自动计算】
-90–100：Immediate，极高价值
-80–89：Daily，当日精选
-65–79：Weekly，周报候选
-50–64：Archive，存档观察
-0–49：Drop，不值得占用注意力
-
-【硬过滤】
-显著降低评分：
-- AI工具排行榜；
-- “10个最好用AI工具”；
-- 常规版本更新；
-- 产品营销；
-- 没有案例或机制的趋势预测；
-- 单纯新闻转述；
-- 重复已有常识；
-- 标题党；
-- 只有观点，没有证据或推理。
-
-【分析要求】
-1. title_zh：给出高信息密度中文标题。
-2. summary_zh：只说明内容本身，避免擅自扩展；通常100–180字。
-3. core_judgment：回答“这件事真正意味着什么”，不要只是复述。
-4. why_it_matters：解释它为什么值得进入我的企业AI转型研究系统。
-5. relation_to_me：
-   - current_work：对我当前工作或实验有什么直接价值；
-   - expert_growth：对我成长为企业AI深度应用落地专家有什么价值；
-   - long_term_value：是否能形成方法论、知识资产、咨询能力或创业机会。
-6. information_type：严格区分事实、研究发现、案例、作者观点、推测或混合。
-7. counterpoint：指出最重要的反例、局限、替代解释或尚未验证之处。
-8. action_type：
-   - IGNORE：无需投入时间；
-   - READ：值得打开原文；
-   - SAVE：值得保存为知识资产；
-   - APPLY：值得尽快试验或应用；
-   - DISCUSS：值得与同事/专家讨论；
-   - BUILD：值得形成长期研究主题、方法论或产品方向。
-9. asset_type：判断更适合沉淀为哪类资产。
-10. confidence：
-   - high：事实与证据较充分；
-   - medium：方向合理但仍有限制；
-   - low：主要是推测或证据不足。
-11. drop_reason：
-   如果内容明显低价值，说明原因；否则填 null。
-
-不要因为作者知名自动提高评分。
-不要把作者判断当作事实。
-如果信息不足以支持结论，必须降低 confidence 和相关评分。
-"""
-
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
 
 def load_json(path, default):
     if not path.exists():
@@ -494,34 +494,80 @@ def save_json(path, data):
 
 def clean_html(value):
     text = BeautifulSoup(value or "", "html.parser").get_text("\n")
-    return re.sub(r"\n{3,}", "\n\n", text).strip()
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
-def entry_text(entry):
+def feed_text(entry):
     parts = []
-
     if entry.get("title"):
-        parts.append(f"标题：{entry.get('title')}")
-
+        parts.append(entry.get("title"))
     if entry.get("summary"):
         parts.append(clean_html(entry.get("summary")))
-
     for content in entry.get("content", []):
         value = content.get("value", "")
         if value:
             parts.append(clean_html(value))
+    return "\n\n".join(x for x in parts if x).strip()
 
-    return "\n\n".join(x for x in parts if x)[:16000]
+
+def fetch_article_text(url):
+    if not url:
+        return ""
+    try:
+        req = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 PersonalIntelligenceBot/0.4.1"
+            }
+        )
+        with urlopen(req, timeout=12) as response:
+            raw = response.read(800000).decode("utf-8", errors="ignore")
+        soup = BeautifulSoup(raw, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
+            tag.decompose()
+
+        article = soup.find("article") or soup.find("main") or soup.body
+        text = clean_html(str(article)) if article else ""
+        return text[:ARTICLE_CHAR_LIMIT]
+    except Exception as exc:
+        print(f"[WARN] 无法读取原网页，回退到RSS内容: {url} | {exc}")
+        return ""
+
+
+def get_source_material(entry):
+    rss = feed_text(entry)
+    page = ""
+
+    # RSS/Atom内容太短时尝试读取原网页；足够长也可补充网页，但只保留限定长度。
+    if len(rss) < 6000:
+        page = fetch_article_text(entry.get("link", ""))
+
+    best = page if len(page) > len(rss) else rss
+    return {
+        "rss_text": rss[:ARTICLE_CHAR_LIMIT],
+        "page_text": page[:ARTICLE_CHAR_LIMIT],
+        "analysis_text": best[:ARTICLE_CHAR_LIMIT],
+        "source_depth": (
+            "full_page_or_long_feed" if len(best) >= 5000
+            else "partial_feed_or_excerpt"
+        )
+    }
 
 
 def calculate_pis(scores):
-    return (
-        scores["enterprise_ai_value"]
-        + scores["practical_value"]
-        + scores["cognitive_upgrade"]
-        + scores["org_talent_value"]
-        + scores["information_quality"]
-    )
+    total = sum(scores.values())
+
+    # 具体性/证据密度硬性约束，防止“正确废话”拿高分。
+    specificity = scores["specificity"]
+    evidence_density = scores["evidence_density"]
+
+    if specificity < 6 and evidence_density < 6:
+        return min(total, 49)
+    if specificity < 8 or evidence_density < 8:
+        return min(total, 64)
+
+    return total
 
 
 def get_tier(pis):
@@ -536,17 +582,23 @@ def get_tier(pis):
     return "Drop"
 
 
-def analyze(client, source, entry):
+def safe_slug(value):
+    return hashlib.sha1(value.encode("utf-8")).hexdigest()[:12]
+
+
+def analyze(client, source, entry, material):
     prompt = f"""
-请分析以下信息。
-
 来源：{source.get('name', '')}
-来源优先级：{source.get('priority', '')}
-预设主题：{', '.join(source.get('topics', []))}
-原文链接：{entry.get('link', '')}
+原始链接：{entry.get('link', '')}
+发布时间：{entry.get('published', entry.get('updated', ''))}
+内容深度：{material['source_depth']}
 
-原始内容：
-{entry_text(entry)}
+以下是系统当前能获取到的原始材料。
+如果只是RSS摘要，请明确证据有限，不要假装读到了全文。
+
+--- 原始材料开始 ---
+{material['analysis_text']}
+--- 原始材料结束 ---
 """
 
     response = client.responses.create(
@@ -556,7 +608,7 @@ def analyze(client, source, entry):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "personal_intelligence_v021",
+                "name": "evidence_first_item_v041",
                 "strict": True,
                 "schema": SCHEMA
             }
@@ -565,14 +617,24 @@ def analyze(client, source, entry):
     )
 
     raw = json.loads(response.output_text)
-
     pis = calculate_pis(raw["scores"])
     tier = get_tier(pis)
     keep = pis >= 50
 
-    action_type = raw["action_type"]
-    if not keep:
-        action_type = "IGNORE"
+    action = raw["action_type"] if keep else "IGNORE"
+
+    # 没有任何证据的文章直接Drop。
+    evidence = raw["evidence"]
+    evidence_count = (
+        len(evidence["concrete_facts"])
+        + len(evidence["numbers_metrics"])
+        + len(evidence["mechanism_steps"])
+    )
+    if evidence_count == 0:
+        keep = False
+        pis = min(pis, 49)
+        tier = "Drop"
+        action = "IGNORE"
 
     return {
         "analysis_version": ANALYSIS_VERSION,
@@ -585,16 +647,140 @@ def analyze(client, source, entry):
         "summary_zh": raw["summary_zh"],
         "core_judgment": raw["core_judgment"],
         "why_it_matters": raw["why_it_matters"],
+        "evidence": raw["evidence"],
+        "claim_map": raw["claim_map"],
         "relation_to_me": raw["relation_to_me"],
+        "why_read_original": raw["why_read_original"],
+        "original_reading_focus": raw["original_reading_focus"],
         "information_type": raw["information_type"],
-        "action_type": action_type,
+        "action_type": action,
         "confidence": raw["confidence"],
         "counterpoint": raw["counterpoint"],
         "asset_type": raw["asset_type"],
-        "drop_reason": raw["drop_reason"]
+        "drop_reason": raw["drop_reason"],
+        "source_depth": material["source_depth"]
     }
 
+# ---------------------------------------------------------------------
+# Detail pages
+# ---------------------------------------------------------------------
 
+def render_detail_page(item):
+    a = item["analysis"]
+    ev = a["evidence"]
+    cm = a["claim_map"]
+    case = ev["case_details"]
+
+    lines = [
+        f"# {a['title_zh']}",
+        "",
+        f"> **PIS {a['pis']}｜{a['tier']}｜{a['knowledge_domain']}｜{a['confidence']}**",
+        "",
+        f"原文：[{item.get('title_original','打开原文')}]({item.get('url','')})",
+        "",
+        f"来源：{item.get('source_name','')}  ",
+        f"发布时间：{item.get('published','')}  ",
+        f"材料完整度：{a.get('source_depth','')}",
+        "",
+        "## 1｜这篇内容真正提供了什么",
+        "",
+        a["summary_zh"],
+        "",
+        f"**判断：** {a['core_judgment']}",
+        "",
+        "## 2｜关键证据",
+        ""
+    ]
+
+    if ev["concrete_facts"]:
+        lines += ["### 具体事实", ""]
+        lines += [f"- {x}" for x in ev["concrete_facts"]]
+        lines.append("")
+
+    if ev["numbers_metrics"]:
+        lines += ["### 数字与指标", ""]
+        lines += [f"- **{x}**" for x in ev["numbers_metrics"]]
+        lines.append("")
+
+    if ev["mechanism_steps"]:
+        lines += ["### 机制 / 过程", ""]
+        lines += [f"{i}. {x}" for i, x in enumerate(ev["mechanism_steps"], 1)]
+        lines.append("")
+
+    lines += [
+        "## 3｜案例过程",
+        "",
+        f"**主体：** {case['actor']}",
+        "",
+        f"**背景：** {case['context']}",
+        "",
+        f"**原问题：** {case['problem']}",
+        "",
+        f"**AI如何介入：** {case['ai_intervention']}",
+        "",
+        f"**流程发生了什么变化：** {case['workflow_change']}",
+        "",
+        f"**人的角色：** {case['human_role']}",
+        "",
+        f"**结果：** {case['outcome']}",
+        "",
+        f"**失败 / 限制：** {case['failure_limits']}",
+        "",
+        "## 4｜事实、解释与推断分开看",
+        "",
+        "### 原文明示/报告的事实"
+    ]
+
+    lines += [f"- {x}" for x in cm["confirmed_or_reported_facts"]] or ["- 原文未提供足够事实。"]
+    lines += ["", "### 作者的解释"]
+    lines += [f"- {x}" for x in cm["author_interpretations"]] or ["- 无明确作者解释。"]
+    lines += ["", "### 系统基于材料做的推断"]
+    lines += [f"- {x}" for x in cm["model_inferences"]] or ["- 无额外推断。"]
+    lines += ["", "### 仍然不知道什么"]
+    lines += [f"- {x}" for x in cm["unknowns"]] or ["- 暂无。"]
+
+    lines += [
+        "",
+        "## 5｜为什么与你有关",
+        "",
+        f"**当前工作：** {a['relation_to_me']['current_work']}",
+        "",
+        f"**专家成长：** {a['relation_to_me']['expert_growth']}",
+        "",
+        f"**长期价值：** {a['relation_to_me']['long_term_value']}",
+        "",
+        "## 6｜要不要看原文",
+        "",
+        a["why_read_original"],
+        ""
+    ]
+
+    if a["original_reading_focus"]:
+        lines += ["### 打开原文后重点找这些", ""]
+        lines += [f"- {x}" for x in a["original_reading_focus"]]
+        lines.append("")
+
+    lines += [
+        f"**[→ 打开原始材料]({item.get('url','')})**",
+        "",
+        "## 7｜反方与限制",
+        "",
+        a["counterpoint"]
+    ]
+
+    return "\n".join(lines)
+
+
+def write_detail_page(item):
+    DETAILS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = safe_slug(item["id"]) + ".md"
+    path = DETAILS_DIR / filename
+    path.write_text(render_detail_page(item), encoding="utf-8")
+    return f"details/{filename}"
+
+# ---------------------------------------------------------------------
+# Event clustering helpers
+# ---------------------------------------------------------------------
 
 def make_event_id(member_ids):
     raw = "|".join(sorted(member_ids)).encode("utf-8")
@@ -604,83 +790,74 @@ def make_event_id(member_ids):
 def cluster_candidate_items(items):
     candidates = []
     for item in items:
-        analysis = item.get("analysis", {})
-        if not analysis.get("keep"):
-            continue
-        if analysis.get("pis", 0) < 50:
-            continue
-        if not analysis.get("core_judgment"):
-            continue
-        candidates.append(item)
-
-    # 最近写入的数据在列表尾部。
+        a = item.get("analysis", {})
+        if a.get("keep") and a.get("pis", 0) >= 50:
+            candidates.append(item)
     return candidates[-CLUSTER_MAX_ITEMS:]
+
+
+def singleton_event(item):
+    a = item["analysis"]
+    facts = a["evidence"]["concrete_facts"][:4]
+    nums = a["evidence"]["numbers_metrics"][:3]
+
+    return {
+        "event_id": make_event_id([item["id"]]),
+        "event_title": a["title_zh"],
+        "event_type": "独立内容",
+        "knowledge_domain": a["knowledge_domain"],
+        "member_ids": [item["id"]],
+        "member_count": 1,
+        "source_names": [item.get("source_name", "")],
+        "source_count": 1,
+        "is_cross_source": False,
+        "event_pis": a["pis"],
+        "event_tier": a["tier"],
+        "combined_summary": a["summary_zh"],
+        "combined_judgment": a["core_judgment"],
+        "why_it_matters": a["why_it_matters"],
+        "key_evidence": facts + nums,
+        "contradictions": a["counterpoint"],
+        "confidence": a["confidence"],
+        "recommended_action": a["action_type"],
+        "unique_contributions": [{
+            "item_id": item["id"],
+            "source_name": item.get("source_name", ""),
+            "source_role": "其他",
+            "unique_contribution": a["core_judgment"]
+        }]
+    }
 
 
 def build_cluster_payload(items):
     payload = []
     for item in items:
-        analysis = item.get("analysis", {})
+        a = item["analysis"]
         payload.append({
-            "id": item.get("id", ""),
-            "source_name": item.get("source_name") or item.get("source", ""),
-            "title_original": item.get("title_original", ""),
-            "url": item.get("url", ""),
-            "pis": analysis.get("pis", 0),
-            "tier": analysis.get("tier", ""),
-            "knowledge_domain": analysis.get("knowledge_domain", ""),
-            "summary_zh": analysis.get("summary_zh", ""),
-            "core_judgment": analysis.get("core_judgment", ""),
-            "why_it_matters": analysis.get("why_it_matters", ""),
-            "information_type": analysis.get("information_type", "")
+            "id": item["id"],
+            "source_name": item.get("source_name", ""),
+            "title_zh": a["title_zh"],
+            "pis": a["pis"],
+            "knowledge_domain": a["knowledge_domain"],
+            "summary": a["summary_zh"],
+            "judgment": a["core_judgment"],
+            "concrete_facts": a["evidence"]["concrete_facts"][:5],
+            "numbers_metrics": a["evidence"]["numbers_metrics"][:5],
+            "mechanism_steps": a["evidence"]["mechanism_steps"][:5]
         })
     return payload
 
 
-def singleton_event(item):
-    analysis = item.get("analysis", {})
-    item_id = item.get("id", "")
-    source_name = item.get("source_name") or item.get("source", "")
-
-    return {
-        "event_id": make_event_id([item_id]),
-        "event_title": analysis.get("title_zh") or item.get("title_original", ""),
-        "event_type": "独立内容",
-        "knowledge_domain": analysis.get("knowledge_domain", ""),
-        "member_ids": [item_id],
-        "member_count": 1,
-        "source_names": [source_name] if source_name else [],
-        "source_count": 1 if source_name else 0,
-        "is_cross_source": False,
-        "event_pis": analysis.get("pis", 0),
-        "event_tier": analysis.get("tier", "Archive"),
-        "combined_summary": analysis.get("summary_zh", ""),
-        "combined_judgment": analysis.get("core_judgment", ""),
-        "why_it_matters": analysis.get("why_it_matters", ""),
-        "contradictions": analysis.get("counterpoint", ""),
-        "confidence": analysis.get("confidence", "medium"),
-        "recommended_action": analysis.get("action_type", "SAVE"),
-        "unique_contributions": [{
-            "item_id": item_id,
-            "source_name": source_name,
-            "source_role": "其他",
-            "unique_contribution": analysis.get("core_judgment", "")
-        }]
-    }
-
-
 def cluster_items(client, items):
     candidates = cluster_candidate_items(items)
-
     if not candidates:
         return []
-
     if len(candidates) == 1:
         return [singleton_event(candidates[0])]
 
     payload = build_cluster_payload(candidates)
     valid_ids = {x["id"] for x in payload}
-    item_map = {item.get("id", ""): item for item in candidates}
+    item_map = {x["id"]: x for x in candidates}
 
     response = client.responses.create(
         model=MODEL,
@@ -689,167 +866,106 @@ def cluster_items(client, items):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "cross_source_event_clusters_v03",
+                "name": "evidence_event_clusters_v041",
                 "strict": True,
                 "schema": CLUSTER_SCHEMA
             }
         },
         store=False
     )
-
     raw = json.loads(response.output_text)
 
     events = []
     assigned = set()
 
-    for cluster in raw.get("clusters", []):
-        member_ids = []
-        for item_id in cluster.get("member_ids", []):
-            if item_id in valid_ids and item_id not in assigned:
-                member_ids.append(item_id)
-
+    for c in raw["clusters"]:
+        member_ids = [x for x in c["member_ids"] if x in valid_ids and x not in assigned]
         if not member_ids:
             continue
-
         assigned.update(member_ids)
 
-        member_items = [item_map[item_id] for item_id in member_ids]
-        member_sources = []
-        member_scores = []
-
+        member_items = [item_map[x] for x in member_ids]
+        sources = []
+        scores = []
         for item in member_items:
-            source_name = item.get("source_name") or item.get("source", "")
-            if source_name and source_name not in member_sources:
-                member_sources.append(source_name)
-            member_scores.append(item.get("analysis", {}).get("pis", 0))
+            source = item.get("source_name", "")
+            if source and source not in sources:
+                sources.append(source)
+            scores.append(item["analysis"]["pis"])
 
         contributions = []
-        seen_contribution_ids = set()
+        for uc in c["unique_contributions"]:
+            iid = uc["item_id"]
+            if iid in member_ids:
+                contributions.append({
+                    "item_id": iid,
+                    "source_name": item_map[iid].get("source_name", ""),
+                    "source_role": uc["source_role"],
+                    "unique_contribution": uc["unique_contribution"]
+                })
 
-        for contribution in cluster.get("unique_contributions", []):
-            item_id = contribution.get("item_id", "")
-            if item_id not in member_ids or item_id in seen_contribution_ids:
-                continue
-
-            source_name = (
-                item_map[item_id].get("source_name")
-                or item_map[item_id].get("source", "")
-            )
-
-            contributions.append({
-                "item_id": item_id,
-                "source_name": source_name,
-                "source_role": contribution.get("source_role", "其他"),
-                "unique_contribution": contribution.get("unique_contribution", "")
-            })
-            seen_contribution_ids.add(item_id)
-
-        # 如果模型遗漏了某个成员的贡献，自动补齐。
-        for item_id in member_ids:
-            if item_id in seen_contribution_ids:
-                continue
-
-            item = item_map[item_id]
-            contributions.append({
-                "item_id": item_id,
-                "source_name": item.get("source_name") or item.get("source", ""),
-                "source_role": "其他",
-                "unique_contribution": item.get("analysis", {}).get("core_judgment", "")
-            })
-
-        event_pis = max(member_scores) if member_scores else 0
-
+        event_pis = max(scores) if scores else 0
         events.append({
             "event_id": make_event_id(member_ids),
-            "event_title": cluster.get("event_title", ""),
-            "event_type": cluster.get("event_type", "独立内容"),
-            "knowledge_domain": cluster.get("knowledge_domain", ""),
+            "event_title": c["event_title"],
+            "event_type": c["event_type"],
+            "knowledge_domain": c["knowledge_domain"],
             "member_ids": member_ids,
             "member_count": len(member_ids),
-            "source_names": member_sources,
-            "source_count": len(member_sources),
-            "is_cross_source": len(member_sources) >= 2,
+            "source_names": sources,
+            "source_count": len(sources),
+            "is_cross_source": len(sources) >= 2,
             "event_pis": event_pis,
             "event_tier": get_tier(event_pis),
-            "combined_summary": cluster.get("combined_summary", ""),
-            "combined_judgment": cluster.get("combined_judgment", ""),
-            "why_it_matters": cluster.get("why_it_matters", ""),
-            "contradictions": cluster.get("contradictions", ""),
-            "confidence": cluster.get("confidence", "medium"),
-            "recommended_action": cluster.get("recommended_action", "SAVE"),
+            "combined_summary": c["combined_summary"],
+            "combined_judgment": c["combined_judgment"],
+            "why_it_matters": c["why_it_matters"],
+            "key_evidence": c["key_evidence"],
+            "contradictions": c["contradictions"],
+            "confidence": c["confidence"],
+            "recommended_action": c["recommended_action"],
             "unique_contributions": contributions
         })
 
-    # 没有被模型分组的内容自动成为单例事件，避免丢信息。
     for item in candidates:
-        item_id = item.get("id", "")
-        if item_id not in assigned:
+        if item["id"] not in assigned:
             events.append(singleton_event(item))
 
-    # 高价值事件排前面。
-    events.sort(
-        key=lambda x: (
-            x.get("is_cross_source", False),
-            x.get("event_pis", 0),
-            x.get("member_count", 0)
-        ),
-        reverse=True
-    )
-
+    events.sort(key=lambda x: x["event_pis"], reverse=True)
     return events
 
 
 def attach_event_metadata(items, events):
     lookup = {}
-
     for event in events:
-        contribution_lookup = {
-            x.get("item_id"): x
-            for x in event.get("unique_contributions", [])
-        }
-
-        for item_id in event.get("member_ids", []):
-            contribution = contribution_lookup.get(item_id, {})
-            lookup[item_id] = {
-                "event_id": event.get("event_id"),
-                "event_title": event.get("event_title"),
-                "event_type": event.get("event_type"),
-                "cluster_size": event.get("member_count", 1),
-                "is_cross_source": event.get("is_cross_source", False),
-                "source_role": contribution.get("source_role", "其他"),
-                "unique_contribution": contribution.get("unique_contribution", "")
+        for iid in event["member_ids"]:
+            lookup[iid] = {
+                "event_id": event["event_id"],
+                "event_title": event["event_title"],
+                "event_type": event["event_type"],
+                "cluster_size": event["member_count"],
+                "is_cross_source": event["is_cross_source"]
             }
-
     for item in items:
-        item_id = item.get("id", "")
-        if item_id in lookup:
-            item["event"] = lookup[item_id]
+        if item["id"] in lookup:
+            item["event"] = lookup[item["id"]]
 
-
-
-def theme_items_payload(events):
-    payload = []
-    for event in events:
-        if event.get("member_count", 0) < 1:
-            continue
-        payload.append({
-            "event_id": event.get("event_id"),
-            "event_title": event.get("event_title"),
-            "event_type": event.get("event_type"),
-            "knowledge_domain": event.get("knowledge_domain"),
-            "combined_summary": event.get("combined_summary"),
-            "combined_judgment": event.get("combined_judgment"),
-            "why_it_matters": event.get("why_it_matters"),
-            "event_pis": event.get("event_pis"),
-        })
-    return payload[-40:]
-
+# ---------------------------------------------------------------------
+# Themes
+# ---------------------------------------------------------------------
 
 def build_themes(client, events):
     if len(events) < 2:
         return []
 
-    payload = theme_items_payload(events)
+    payload = [{
+        "event_id": e["event_id"],
+        "event_title": e["event_title"],
+        "knowledge_domain": e["knowledge_domain"],
+        "combined_judgment": e["combined_judgment"],
+        "key_evidence": e.get("key_evidence", [])[:5],
+        "event_pis": e["event_pis"]
+    } for e in events[-30:]]
 
     response = client.responses.create(
         model=MODEL,
@@ -858,179 +974,184 @@ def build_themes(client, events):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "research_themes_v031",
+                "name": "research_themes_v041",
                 "strict": True,
                 "schema": THEME_SCHEMA
             }
         },
         store=False
     )
-
     result = json.loads(response.output_text)
-    valid_ids = {e.get("event_id") for e in events}
+    valid_ids = {e["event_id"] for e in events}
 
-    themes=[]
-    for theme in result.get("themes", []):
-        related=[
-            x for x in theme.get("related_event_ids", [])
-            if x in valid_ids
-        ]
+    themes = []
+    for t in result["themes"]:
+        related = [x for x in t["related_event_ids"] if x in valid_ids]
         if len(related) < 2:
             continue
-
-        theme["theme_id"]="theme_"+hashlib.sha1(
-            "|".join(sorted(related)).encode("utf-8")
-        ).hexdigest()[:12]
-        theme["related_event_count"]=len(related)
-        themes.append(theme)
-
+        t["theme_id"] = "theme_" + hashlib.sha1("|".join(sorted(related)).encode()).hexdigest()[:12]
+        t["related_event_ids"] = related
+        t["related_event_count"] = len(related)
+        themes.append(t)
     return themes
 
+# ---------------------------------------------------------------------
+# Daily Brief
+# ---------------------------------------------------------------------
 
 def select_brief_events(events):
-    rank = {"Immediate": 5, "Daily": 4, "Weekly": 3, "Archive": 2, "Drop": 1}
-    selected = [e for e in events if e.get("event_tier") != "Drop"]
-    selected.sort(key=lambda e: (rank.get(e.get("event_tier",""),0), e.get("event_pis",0), e.get("source_count",0)), reverse=True)
-    return selected[:BRIEF_MAX_EVENTS]
+    eligible = [e for e in events if e["event_tier"] in ("Immediate", "Daily", "Weekly")]
+    eligible.sort(key=lambda x: x["event_pis"], reverse=True)
+    return eligible[:BRIEF_MAX_EVENTS]
 
 
 def build_brief_payload(events):
-    payload = []
-    for event in select_brief_events(events):
-        payload.append({
-            "event_id": event.get("event_id",""),
-            "event_title": event.get("event_title",""),
-            "knowledge_domain": event.get("knowledge_domain",""),
-            "event_pis": event.get("event_pis",0),
-            "event_tier": event.get("event_tier",""),
-            "combined_summary": event.get("combined_summary",""),
-            "combined_judgment": event.get("combined_judgment",""),
-            "why_it_matters": event.get("why_it_matters",""),
-            "contradictions": event.get("contradictions",""),
-            "confidence": event.get("confidence",""),
-            "source_names": event.get("source_names",[])
-        })
-    return payload
+    return [{
+        "event_id": e["event_id"],
+        "event_title": e["event_title"],
+        "event_pis": e["event_pis"],
+        "event_tier": e["event_tier"],
+        "knowledge_domain": e["knowledge_domain"],
+        "key_evidence": e.get("key_evidence", [])[:6],
+        "combined_judgment": e["combined_judgment"],
+        "contradictions": e["contradictions"],
+        "source_names": e["source_names"]
+    } for e in select_brief_events(events)]
 
 
-def fallback_daily_brief(events):
+def render_brief(brief, events, items):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    selected = select_brief_events(events)
-    lines = [f"# AI企业转型 Daily Brief｜{today}", "", "> AI综合失败时的降级版。", ""]
-    if not selected:
-        lines += ["今天没有足够高价值的新事件。", ""]
-        return "\n".join(lines)
+    event_map = {e["event_id"]: e for e in events}
+    item_map = {i["id"]: i for i in items}
 
-    lines += ["## 今天最值得更新判断的事件", ""]
-    for idx, event in enumerate(selected[:3], 1):
-        lines += [
-            f"### {idx}. {event.get('event_title','')}", "",
-            f"**发生了什么：** {event.get('combined_summary','')}", "",
-            f"**判断更新：** {event.get('combined_judgment','')}", "",
-            f"**为什么重要：** {event.get('why_it_matters','')}", "",
-            f"**仍需校准：** {event.get('contradictions','')}", ""
-        ]
-    return "\n".join(lines)
-
-
-def render_daily_brief(brief, events):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    event_map = {e.get("event_id"): e for e in events}
     lines = [
-        f"# AI企业转型 Daily Brief｜{today}", "",
-        f"> **{brief.get('headline','')}**", "",
-        brief.get("overview",""), "",
-        "## 01｜今天真正值得更新的判断", ""
+        f"# Evidence-first Daily Intelligence｜{today}",
+        "",
+        f"> **{brief['headline']}**",
+        "",
+        brief["overview"],
+        "",
+        "## 01｜今天最多看这3条",
+        ""
     ]
 
-    for idx, update in enumerate(brief.get("judgment_updates", [])[:3], 1):
+    for idx, top in enumerate(brief["top_items"][:3], 1):
+        e = event_map.get(top["event_id"])
+        if not e:
+            continue
+
         lines += [
-            f"### {idx}. {update.get('title','')}", "",
-            f"**发生了什么**  \n{update.get('what_happened','')}", "",
-            f"**这改变了什么判断**  \n{update.get('what_it_changes','')}", "",
-            f"**与我有什么关系**  \n{update.get('for_me','')}", "",
-            f"**仍不能确认**  \n{update.get('still_uncertain','')}", ""
+            f"### {idx}. {top['title']}",
+            "",
+            f"**为什么进入Top 3**  \n{top['why_top']}",
+            "",
+            "**最关键的证据**"
+        ]
+        for evidence in e.get("key_evidence", [])[:5]:
+            lines.append(f"- {evidence}")
+
+        lines += [
+            "",
+            f"**我该更新什么判断**  \n{top['judgment_update']}",
+            "",
+            f"**对我有什么实际价值**  \n{top['for_me']}",
+            "",
+            f"**还不能确认什么**  \n{top['still_uncertain']}",
+            ""
         ]
 
-        srcs = []
-        for eid in update.get("event_ids", []):
-            for s in event_map.get(eid, {}).get("source_names", []):
-                if s not in srcs:
-                    srcs.append(s)
-        if srcs:
-            lines += [f"来源：{'、'.join(srcs)}", ""]
+        member_items = [item_map[iid] for iid in e["member_ids"] if iid in item_map]
+        for item in member_items:
+            detail_path = item.get("detail_path")
+            title = item.get("title_original", "原始材料")
+            url = item.get("url", "")
+            if detail_path:
+                lines.append(f"- [展开证据卡：{item.get('source_name','')}](./{detail_path})")
+            if url:
+                lines.append(f"- [打开原文：{title}]({url})")
+        lines.append("")
 
-    lines += ["## 02｜值得沉淀的方法论资产", ""]
-    assets = brief.get("method_assets", [])
-    if assets:
-        for a in assets[:3]:
-            lines += [
-                f"### {a.get('asset_name','')}", "",
-                f"**为什么现在值得沉淀：** {a.get('why_now','')}", "",
-                f"**最小下一步：** {a.get('next_step','')}", ""
-            ]
-    else:
-        lines += ["今天没有新的内容值得单独上升为方法论资产。", ""]
+    asset = brief["method_asset"]
+    lines += [
+        "## 02｜今天最值得沉淀的一个方法",
+        "",
+        f"### {asset['asset_name']}",
+        "",
+        f"**为什么现在值得做：** {asset['why_now']}",
+        "",
+        f"**最小下一步：** {asset['next_step']}",
+        "",
+        "## 03｜我今天可以做什么",
+        ""
+    ]
+    for action in brief["actions"][:3]:
+        lines.append(f"- {action}")
 
-    lines += ["## 03｜我今天可以做什么", ""]
-    actions = brief.get("actions", [])[:3]
-    lines += [f"- {x}" for x in actions] if actions else ["- 无需额外行动，优先消化已有判断。"]
-
-    lines += ["", "## 04｜接下来值得观察什么", ""]
-    watch = brief.get("watch_next", [])[:4]
-    lines += [f"- {x}" for x in watch] if watch else ["- 等待更多真实企业案例和反方证据。"]
-
-    lines += ["", "---", "", "## 本期事件索引", ""]
-    for e in select_brief_events(events):
-        lines.append(f"- **{e.get('event_title','')}**｜PIS {e.get('event_pis',0)}｜{e.get('event_tier','')}｜{'、'.join(e.get('source_names',[]))}")
+    lines += [
+        "",
+        "---",
+        "",
+        "> 使用方式：先扫Top 3；只有当关键证据真正与你相关时，再点“展开证据卡”或原文。"
+    ]
     return "\n".join(lines)
 
 
-def generate_daily_brief(client, events):
+def fallback_brief(events, items):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    item_map = {i["id"]: i for i in items}
+    lines = [f"# Evidence-first Daily Intelligence｜{today}", "", "## 今天最高价值事件", ""]
+    for e in select_brief_events(events)[:3]:
+        lines += [f"### {e['event_title']}", ""]
+        for x in e.get("key_evidence", [])[:5]:
+            lines.append(f"- {x}")
+        lines += ["", f"**判断：** {e['combined_judgment']}", ""]
+        for iid in e["member_ids"]:
+            item = item_map.get(iid)
+            if item:
+                if item.get("detail_path"):
+                    lines.append(f"- [展开证据卡](./{item['detail_path']})")
+                lines.append(f"- [原文]({item.get('url','')})")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def generate_daily_brief(client, events, items):
     payload = build_brief_payload(events)
     if not payload:
-        return fallback_daily_brief(events)
+        return fallback_brief(events, items)
 
     try:
         response = client.responses.create(
             model=MODEL,
             instructions=BRIEF_INSTRUCTIONS,
             input=json.dumps(payload, ensure_ascii=False),
-            text={"format": {"type": "json_schema", "name": "daily_brief_v04", "strict": True, "schema": BRIEF_SCHEMA}},
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "evidence_daily_brief_v041",
+                    "strict": True,
+                    "schema": BRIEF_SCHEMA
+                }
+            },
             store=False
         )
-        return render_daily_brief(json.loads(response.output_text), events)
+        brief = json.loads(response.output_text)
+        return render_brief(brief, events, items)
     except Exception as exc:
-        print(f"[WARN] Daily Brief AI综合失败，使用降级版: {exc}")
-        return fallback_daily_brief(events)
+        print(f"[WARN] Brief生成失败，使用降级版: {exc}")
+        return fallback_brief(events, items)
 
+# ---------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------
 
-def main(mode="daily"):
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("缺少 OPENAI_API_KEY。请在 GitHub Actions Secrets 中添加。")
+def collect_candidates(sources, processed):
+    queues = []
 
-    sources = load_json(SOURCES_PATH, [])
-    items = load_json(ITEMS_PATH, [])
-    processed = set(load_json(PROCESSED_PATH, []))
-    client = OpenAI()
-
-    if mode == "weekly":
-        events = load_json(EVENTS_PATH, [])
-        old_themes = load_json(THEMES_PATH, [])
-        try:
-            themes = build_themes(client, events)
-            save_json(THEMES_PATH, themes)
-            print(f"Weekly主题聚类完成：形成 {len(themes)} 个研究主题。")
-        except Exception as exc:
-            print(f"[WARN] Weekly主题聚类失败，保留旧 themes.json: {exc}")
-            save_json(THEMES_PATH, old_themes)
-        return
-
-    source_queues = []
     for source in sources:
         feed = feedparser.parse(source["url"])
         if getattr(feed, "bozo", False):
-            print(f"[WARN] Feed 解析可能有问题: {source.get('name','')} - {feed.bozo_exception}")
+            print(f"[WARN] Feed解析异常: {source.get('name','')} | {feed.bozo_exception}")
 
         queue = []
         for entry in feed.entries:
@@ -1038,13 +1159,13 @@ def main(mode="daily"):
             if uid and uid not in processed:
                 queue.append((source, entry, uid))
         if queue:
-            source_queues.append(queue)
+            queues.append(queue)
 
     candidates = []
     round_index = 0
     while len(candidates) < MAX_NEW_ITEMS:
         added = False
-        for queue in source_queues:
+        for queue in queues:
             if round_index < len(queue):
                 candidates.append(queue[round_index])
                 added = True
@@ -1054,53 +1175,92 @@ def main(mode="daily"):
             break
         round_index += 1
 
-    print(f"本次发现 {len(candidates)} 条待处理内容，来自 {len(source_queues)} 个有新内容的来源。")
+    return candidates
+
+
+def main(mode="daily"):
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("缺少 OPENAI_API_KEY")
+
+    client = OpenAI()
+
+    if mode == "weekly":
+        events = load_json(EVENTS_PATH, [])
+        old_themes = load_json(THEMES_PATH, [])
+        try:
+            themes = build_themes(client, events)
+            save_json(THEMES_PATH, themes)
+            print(f"Weekly themes: {len(themes)}")
+        except Exception as exc:
+            print(f"[WARN] Weekly主题聚类失败，保留旧结果: {exc}")
+            save_json(THEMES_PATH, old_themes)
+        return
+
+    sources = load_json(SOURCES_PATH, [])
+    items = load_json(ITEMS_PATH, [])
+    processed = set(load_json(PROCESSED_PATH, []))
+
+    candidates = collect_candidates(sources, processed)
+    print(f"本次处理 {len(candidates)} 条新内容。")
+
     run_time = datetime.now(timezone.utc).isoformat()
 
     for source, entry, uid in candidates:
-        print(f"分析: {entry.get('title','(无标题)')}")
+        print(f"读取: {entry.get('title','(无标题)')}")
+        material = get_source_material(entry)
+
         try:
-            analysis = analyze(client, source, entry)
+            analysis = analyze(client, source, entry, material)
         except Exception as exc:
-            print(f"[ERROR] AI分析失败，跳过该条: {exc}")
+            print(f"[ERROR] 分析失败，跳过: {exc}")
             continue
 
-        items.append({
+        item = {
             "id": uid,
-            "source_id": source.get("id",""),
-            "source_name": source.get("name",""),
-            "title_original": entry.get("title",""),
-            "url": entry.get("link",""),
-            "published": entry.get("published", entry.get("updated","")),
+            "source_id": source.get("id", ""),
+            "source_name": source.get("name", ""),
+            "title_original": entry.get("title", ""),
+            "url": entry.get("link", ""),
+            "published": entry.get("published", entry.get("updated", "")),
             "processed_at_utc": run_time,
             "model": MODEL,
             "analysis_version": ANALYSIS_VERSION,
             "analysis": analysis
-        })
+        }
+
+        item["detail_path"] = write_detail_page(item)
+        items.append(item)
         processed.add(uid)
+
+        print(
+            f"  -> PIS {analysis['pis']} / {analysis['tier']} | "
+            f"具体性 {analysis['scores']['specificity']} | "
+            f"证据密度 {analysis['scores']['evidence_density']}"
+        )
 
     old_events = load_json(EVENTS_PATH, [])
     try:
         events = cluster_items(client, items)
         attach_event_metadata(items, events)
     except Exception as exc:
-        print(f"[WARN] 事件聚类失败，保留旧 events.json: {exc}")
+        print(f"[WARN] 事件聚类失败，保留旧结果: {exc}")
         events = old_events
 
-    themes = load_json(THEMES_PATH, [])
-    daily_brief = generate_daily_brief(client, events)
+    # 为已有V0.4.1项目补写detail页。
+    for item in items:
+        if item.get("analysis", {}).get("analysis_version") == ANALYSIS_VERSION and not item.get("detail_path"):
+            item["detail_path"] = write_detail_page(item)
+
+    brief = generate_daily_brief(client, events, items)
 
     save_json(ITEMS_PATH, items)
     save_json(PROCESSED_PATH, sorted(processed))
     save_json(EVENTS_PATH, events)
-    save_json(THEMES_PATH, themes)
-    DAILY_BRIEF_PATH.write_text(daily_brief, encoding="utf-8")
+    DAILY_BRIEF_PATH.write_text(brief, encoding="utf-8")
 
-    cross_source_count = sum(1 for e in events if e.get("is_cross_source"))
     print(
-        f"累计已保存 {len(items)} 条记录；"
-        f"当前形成 {len(events)} 个事件，其中 {cross_source_count} 个跨来源事件；"
-        f"Daily Brief 已生成。"
+        f"完成：{len(items)}条内容，{len(events)}个事件，"
+        f"Brief与证据卡已更新。"
     )
 
 
