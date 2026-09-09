@@ -24,14 +24,14 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.5-alpha"
+ANALYSIS_VERSION = "v0.5.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "6"))
 CLUSTER_MAX_ITEMS = int(os.getenv("CLUSTER_MAX_ITEMS", "15"))
 BRIEF_MAX_EVENTS = int(os.getenv("BRIEF_MAX_EVENTS", "5"))
 ARTICLE_CHAR_LIMIT = int(os.getenv("ARTICLE_CHAR_LIMIT", "18000"))
-INDEX_MAX_LINKS = int(os.getenv("INDEX_MAX_LINKS", "20"))
+INDEX_MAX_LINKS = int(os.getenv("INDEX_MAX_LINKS", "30"))
 
 USER_AGENT = "Mozilla/5.0 PersonalIntelligenceBot/0.5"
 
@@ -486,12 +486,50 @@ def normalize_sources(raw):
     raise ValueError("config/sources.json 格式无法识别")
 
 
-def http_get(url, timeout=15, max_bytes=1200000):
-    req = Request(url, headers={"User-Agent": USER_AGENT})
-    with urlopen(req, timeout=timeout) as resp:
-        data = resp.read(max_bytes)
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return data.decode(charset, errors="ignore")
+def http_get(url, timeout=25, max_bytes=1600000, retries=3):
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.7",
+        "Cache-Control": "no-cache",
+    }
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            req = Request(url, headers=headers)
+            with urlopen(req, timeout=timeout) as resp:
+                data = resp.read(max_bytes)
+                charset = resp.headers.get_content_charset() or "utf-8"
+                return data.decode(charset, errors="ignore")
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries - 1:
+                print(f"[RETRY] {url} | {attempt + 1}/{retries} | {exc}")
+    raise last_exc
+
+
+def extract_jsonld_article_body(soup):
+    bodies = []
+    for tag in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            raw = tag.string or tag.get_text()
+            data = json.loads(raw)
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            obj = stack.pop()
+            if isinstance(obj, dict):
+                body = obj.get("articleBody")
+                if isinstance(body, str) and len(body.strip()) > 200:
+                    bodies.append(body.strip())
+                graph = obj.get("@graph")
+                if isinstance(graph, list):
+                    stack.extend(graph)
+            elif isinstance(obj, list):
+                stack.extend(obj)
+    return max(bodies, key=len) if bodies else ""
 
 
 def fetch_article_text(url):
@@ -501,12 +539,28 @@ def fetch_article_text(url):
         raw = http_get(url)
         soup = BeautifulSoup(raw, "html.parser")
 
+        jsonld_body = extract_jsonld_article_body(soup)
+        if len(jsonld_body) >= 800:
+            return jsonld_body[:ARTICLE_CHAR_LIMIT]
+
         for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "noscript"]):
             tag.decompose()
 
-        article = soup.find("article") or soup.find("main") or soup.body
-        text = clean_html(str(article)) if article else ""
-        return text[:ARTICLE_CHAR_LIMIT]
+        candidates = [
+            soup.find("article"),
+            soup.find("main"),
+            soup.find(attrs={"role": "main"}),
+            soup.body,
+        ]
+        texts = []
+        for node in candidates:
+            if node:
+                value = clean_html(str(node))
+                if value:
+                    texts.append(value)
+
+        result = max(texts, key=len) if texts else ""
+        return result[:ARTICLE_CHAR_LIMIT]
     except Exception as exc:
         print(f"[WARN] 详情页读取失败: {url} | {exc}")
         return ""
@@ -619,10 +673,13 @@ def is_probable_article_link(source, href, text):
     parsed_base = urlparse(base)
     parsed_link = urlparse(abs_url)
 
-    if parsed_base.netloc and parsed_link.netloc != parsed_base.netloc:
+    allowed_hosts = {parsed_base.netloc}
+    if source.get("id") == "langchain_blog":
+        allowed_hosts.update({"blog.langchain.com", "www.langchain.com", "langchain.com"})
+    if parsed_base.netloc and parsed_link.netloc not in allowed_hosts:
         return False
 
-    if scope and scope not in parsed_link.path:
+    if scope and source.get("id") != "langchain_blog" and scope not in parsed_link.path:
         return False
 
     bad_suffixes = (
@@ -639,25 +696,109 @@ def is_probable_article_link(source, href, text):
     if len(visible) < 4:
         return False
 
+    generic = {"view story", "read more", "learn more", "view more", "read"}
+    if visible.lower() in generic:
+        # 允许后续从卡片容器恢复标题
+        return True
+
     return True
+
+
+def recover_card_title(anchor):
+    direct = clean_html(anchor.get_text(" ", strip=True)).strip()
+    generic = {"view story", "read more", "learn more", "view more", "read"}
+    if direct and direct.lower() not in generic and len(direct) >= 8:
+        return direct[:300]
+
+    node = anchor
+    for _ in range(4):
+        node = node.parent
+        if not node:
+            break
+        text = clean_html(node.get_text(" ", strip=True)).strip()
+        text = re.sub(r"\s+", " ", text)
+        if len(text) >= 20:
+            for suffix in ["View story", "Read more", "Learn more"]:
+                text = text.replace(suffix, "").strip()
+            if len(text) >= 12:
+                return text[:300]
+
+    return direct or "Untitled article"
+
+
+def discover_from_sitemap(source, processed):
+    sid = source.get("id")
+    sitemap_urls = []
+    if sid == "openai_enterprise_customer_stories":
+        sitemap_urls = ["https://openai.com/sitemap.xml"]
+    elif sid == "mckinsey_quantumblack_ai":
+        sitemap_urls = ["https://www.mckinsey.com/sitemap.xml"]
+
+    candidates = []
+    for sitemap_url in sitemap_urls:
+        try:
+            raw = http_get(sitemap_url, timeout=35)
+        except Exception as exc:
+            print(f"[WARN] Sitemap读取失败: {source.get('name')} | {exc}")
+            continue
+
+        soup = BeautifulSoup(raw, "xml")
+        urls = [x.get_text(strip=True) for x in soup.find_all("loc")]
+
+        for link in urls:
+            low = link.lower()
+            if sid == "openai_enterprise_customer_stories":
+                if "/business/" not in low:
+                    continue
+                if not any(k in low for k in ["customer", "stories", "customers", "enterprise"]):
+                    continue
+            elif sid == "mckinsey_quantumblack_ai":
+                if "/capabilities/quantumblack/" not in low:
+                    continue
+                if not any(k in low for k in ["ai", "agent", "gen-ai", "artificial-intelligence"]):
+                    continue
+
+            title = link.rstrip("/").split("/")[-1].replace("-", " ").strip().title()
+            uid = make_item_id(source.get("id", ""), link, title)
+            if uid in processed:
+                continue
+            candidates.append({
+                "id": uid,
+                "source": source,
+                "title": title,
+                "url": canonical_url(link),
+                "published": "",
+                "discovery_text": "",
+                "discovery_method": "sitemap_fallback"
+            })
+            if len(candidates) >= INDEX_MAX_LINKS:
+                return candidates
+
+    return candidates
 
 
 def collect_index_source(source, processed):
     crawl = source.get("crawl", {})
     index_url = crawl.get("url", "")
+    raw = ""
 
     try:
-        raw = http_get(index_url)
+        raw = http_get(index_url, timeout=35)
     except Exception as exc:
         print(f"[WARN] 列表页读取失败: {source.get('name')} | {exc}")
-        return []
+
+    if not raw:
+        fallback = discover_from_sitemap(source, processed)
+        if fallback:
+            print(f"[FALLBACK] {source.get('name')}: sitemap发现 {len(fallback)} 条")
+        return fallback
 
     soup = BeautifulSoup(raw, "html.parser")
     seen_urls = set()
     candidates = []
 
     for a in soup.find_all("a", href=True):
-        title = clean_html(a.get_text(" ", strip=True))
+        title = recover_card_title(a)
         href = a.get("href", "")
 
         if not is_probable_article_link(source, href, title):
@@ -687,6 +828,25 @@ def collect_index_source(source, processed):
 
         if len(candidates) >= INDEX_MAX_LINKS:
             break
+
+    # 对“报告中心页”做保底：页面本身就是持续更新的研究资源。
+    if not candidates and source.get("id") == "anthropic_economic_index":
+        fingerprint = hashlib.sha1(raw[:50000].encode("utf-8", errors="ignore")).hexdigest()[:12]
+        uid = f"itm_{source.get('id')}_{fingerprint}"
+        if uid not in processed:
+            candidates.append({
+                "id": uid,
+                "source": source,
+                "title": "Anthropic Economic Index - latest update",
+                "url": index_url,
+                "published": "",
+                "discovery_text": clean_html(raw)[:ARTICLE_CHAR_LIMIT],
+                "discovery_method": "self_page_fallback"
+            })
+
+    if not candidates:
+        fallback = discover_from_sitemap(source, processed)
+        candidates.extend(fallback)
 
     return candidates
 
@@ -825,6 +985,13 @@ def build_source_material(candidate):
         page_text = fetch_article_text(candidate.get("url", ""))
 
     best = page_text if len(page_text) > len(discovery_text) else discovery_text
+
+    # 页面卡片能发现链接但详情页抓取失败时，不再完全静默。
+    if not best.strip():
+        print(
+            f"[WARN] 正文为空: {source.get('name')} | "
+            f"{candidate.get('title')} | {candidate.get('url')}"
+        )
 
     return {
         "analysis_text": best[:ARTICLE_CHAR_LIMIT],
@@ -1103,10 +1270,34 @@ def make_event_id(member_ids):
     return "evt_" + hashlib.sha1(raw).hexdigest()[:12]
 
 
+def cluster_analysis_view(item):
+    a = item.get("analysis", {}) or {}
+    evidence = a.get("evidence")
+    if not isinstance(evidence, dict):
+        evidence = {}
+
+    return {
+        "title_zh": a.get("title_zh") or item.get("title_original") or "未命名内容",
+        "pis": int(a.get("pis", 0) or 0),
+        "tier": a.get("tier") or get_tier(int(a.get("pis", 0) or 0)),
+        "knowledge_domain": a.get("knowledge_domain", "企业AI深度应用"),
+        "summary_zh": a.get("summary_zh", ""),
+        "core_judgment": a.get("core_judgment", ""),
+        "why_it_matters": a.get("why_it_matters", ""),
+        "counterpoint": a.get("counterpoint", ""),
+        "confidence": a.get("confidence", "medium"),
+        "action_type": a.get("action_type", "READ"),
+        "evidence_types_detected": a.get("evidence_types_detected", []),
+        "concrete_facts": evidence.get("concrete_facts", []),
+        "numbers_metrics": evidence.get("numbers_metrics", []),
+        "mechanism_steps": evidence.get("mechanism_steps", []),
+    }
+
+
 def singleton_event(item):
-    a = item["analysis"]
-    facts = a["evidence"]["concrete_facts"][:4]
-    nums = a["evidence"]["numbers_metrics"][:3]
+    a = cluster_analysis_view(item)
+    facts = a["concrete_facts"][:4]
+    nums = a["numbers_metrics"][:3]
 
     return {
         "event_id": make_event_id([item["id"]]),
@@ -1150,7 +1341,7 @@ def cluster_items(client, items):
 
     payload = []
     for item in candidates:
-        a = item["analysis"]
+        a = cluster_analysis_view(item)
         payload.append({
             "id": item["id"],
             "source_name": item.get("source_name", ""),
@@ -1159,10 +1350,10 @@ def cluster_items(client, items):
             "knowledge_domain": a["knowledge_domain"],
             "summary": a["summary_zh"],
             "judgment": a["core_judgment"],
-            "evidence_types": a.get("evidence_types_detected", []),
-            "concrete_facts": a["evidence"]["concrete_facts"][:5],
-            "numbers_metrics": a["evidence"]["numbers_metrics"][:5],
-            "mechanism_steps": a["evidence"]["mechanism_steps"][:5]
+            "evidence_types": a["evidence_types_detected"],
+            "concrete_facts": a["concrete_facts"][:5],
+            "numbers_metrics": a["numbers_metrics"][:5],
+            "mechanism_steps": a["mechanism_steps"][:5]
         })
 
     response = client.responses.create(
@@ -1491,7 +1682,7 @@ def main(mode="daily"):
     for c in candidates:
         print(
             f"- [{c['source'].get('evidence_class')}] "
-            f"{c['source'].get('name')} | {c.get('title')}"
+            f"{c['source'].get('name')} | {c.get('title')} | {c.get('url')}"
         )
     print("")
 
