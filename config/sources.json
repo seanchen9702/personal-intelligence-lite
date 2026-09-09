@@ -1,61 +1,506 @@
-[
-  {
-    "id": "simon_willison_entries",
-    "name": "Simon Willison",
-    "type": "atom",
-    "url": "https://simonwillison.net/atom/entries/",
-    "language": "EN",
-    "priority": "P0",
-    "topics": [
-      "AI能力演进",
-      "企业AI深度应用",
-      "AI个人工作系统"
-    ],
-    "why_follow": "理解模型、Agent、AI工具链和真实使用边界，偏一线实践与可复现实验。"
+{
+  "version": "0.5-alpha",
+  "strategy": {
+    "max_items_per_day": 6,
+    "max_items_per_source": 1,
+    "target_mix": {
+      "primary_evidence": 0.6,
+      "builder_operator": 0.2,
+      "interpretation": 0.1,
+      "venture": 0.1
+    },
+    "selection_rules": {
+      "prefer_primary_source": true,
+      "prefer_full_text": true,
+      "prefer_case_or_data_over_opinion": true,
+      "drop_if_generic_without_evidence": true,
+      "minimum_specificity_for_daily": 8,
+      "minimum_evidence_density_for_daily": 8
+    }
   },
-  {
-    "id": "ethan_mollick_one_useful_thing",
-    "name": "Ethan Mollick / One Useful Thing",
-    "type": "rss",
-    "url": "https://www.oneusefulthing.org/feed",
-    "language": "EN",
-    "priority": "P0",
-    "topics": [
-      "企业AI深度应用",
-      "AI时代组织变革",
-      "AI时代人才发展",
-      "未来社会观察"
-    ],
-    "why_follow": "核心交叉信源：AI如何改变工作、管理、教育与组织，与你的长期定位高度匹配。"
-  },
-  {
-    "id": "josh_bersin",
-    "name": "Josh Bersin",
-    "type": "rss",
-    "url": "https://joshbersin.com/feed/",
-    "language": "EN",
-    "priority": "P0",
-    "topics": [
-      "企业AI深度应用",
-      "AI时代组织变革",
-      "AI时代人才发展",
-      "AI创业机会"
-    ],
-    "why_follow": "关注企业AI、HR技术、人才与组织转型；适合观察企业真实采用与HR operating model变化，但需过滤商业推广。"
-  },
-  {
-    "id": "azeem_azhar_exponential_view",
-    "name": "Azeem Azhar / Exponential View",
-    "type": "rss",
-    "url": "https://www.exponentialview.co/feed",
-    "language": "EN",
-    "priority": "P0",
-    "topics": [
-      "企业AI深度应用",
-      "AI创业机会",
-      "未来社会观察",
-      "AI能力演进"
-    ],
-    "why_follow": "连接AI产业、企业采用、经济与社会结构变化，适合形成宏观判断和创业机会雷达。"
-  }
-]
+  "sources": [
+    {
+      "id": "microsoft_work_trend_index",
+      "name": "Microsoft Work Trend Index",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "primary_enterprise_research",
+      "evidence_class": "primary_evidence",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展"
+      ],
+      "why_follow": "获取全球AI工作方式、管理机制、组织准备度和人才实践的一手调查、行为数据与研究。",
+      "expected_evidence": [
+        "survey_data",
+        "adoption_metrics",
+        "workflow_change",
+        "job_redesign",
+        "manager_role",
+        "employee_behavior",
+        "governance_mechanism"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://www.microsoft.com/en-us/worklab/work-trend-index",
+        "detail_page": true,
+        "link_scope": "/en-us/worklab/work-trend-index/"
+      },
+      "filters": {
+        "include": [
+          "annual report",
+          "special report",
+          "research",
+          "survey",
+          "AI at work",
+          "agents",
+          "organization",
+          "manager",
+          "talent"
+        ],
+        "exclude": [
+          "podcast-only",
+          "event promotion",
+          "generic productivity tips"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 8,
+        "prefer_primary_source": true,
+        "require_one_of": [
+          "survey_data",
+          "adoption_metrics",
+          "workflow_change",
+          "job_redesign"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "anthropic_economic_index",
+      "name": "Anthropic Economic Index",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "primary_economic_data",
+      "evidence_class": "primary_evidence",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展",
+        "未来社会观察"
+      ],
+      "why_follow": "用真实Claude使用数据观察AI正在改变哪些职业、任务与工作活动，区分增强与自动化。",
+      "expected_evidence": [
+        "usage_data",
+        "occupation_data",
+        "task_data",
+        "augmentation_vs_automation",
+        "adoption_metrics",
+        "survey_data"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://www.anthropic.com/economic-index",
+        "detail_page": true,
+        "link_scope": "/economic-index"
+      },
+      "filters": {
+        "include": [
+          "economic index",
+          "labor market",
+          "occupation",
+          "task",
+          "automation",
+          "augmentation",
+          "usage data"
+        ],
+        "exclude": [
+          "generic company announcement",
+          "model release without labor evidence"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 9,
+        "prefer_primary_source": true,
+        "require_one_of": [
+          "usage_data",
+          "occupation_data",
+          "task_data",
+          "augmentation_vs_automation"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "openai_enterprise_customer_stories",
+      "name": "OpenAI Enterprise Customer Stories",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "primary_case_source",
+      "evidence_class": "primary_evidence",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展"
+      ],
+      "why_follow": "获取企业如何把AI嵌入真实业务流程、规模化部署并形成可量化结果的一手案例。",
+      "expected_evidence": [
+        "enterprise_case",
+        "before_after_process",
+        "workflow_change",
+        "implementation_detail",
+        "adoption_metrics",
+        "roi",
+        "productivity_data",
+        "governance_mechanism"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://openai.com/business/customer-stories/",
+        "detail_page": true,
+        "link_scope": "/business/"
+      },
+      "filters": {
+        "include": [
+          "enterprise",
+          "customer story",
+          "workflow",
+          "deployment",
+          "productivity",
+          "governance",
+          "scale",
+          "operations"
+        ],
+        "exclude": [
+          "consumer story",
+          "creative showcase",
+          "product announcement without customer evidence"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 8,
+        "prefer_primary_source": true,
+        "require_one_of": [
+          "workflow_change",
+          "implementation_detail",
+          "adoption_metrics",
+          "roi",
+          "productivity_data"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "anthropic_customer_stories",
+      "name": "Anthropic Customer Stories",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "primary_case_source",
+      "evidence_class": "primary_evidence",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展"
+      ],
+      "why_follow": "获取Claude在企业工作流、客户服务、知识工作、研发和组织采用中的具体案例及量化结果。",
+      "expected_evidence": [
+        "enterprise_case",
+        "before_after_process",
+        "workflow_change",
+        "implementation_detail",
+        "adoption_metrics",
+        "roi",
+        "productivity_data",
+        "human_ai_collaboration"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://www.anthropic.com/customers",
+        "detail_page": true,
+        "link_scope": "/customers/"
+      },
+      "filters": {
+        "include": [
+          "case study",
+          "enterprise",
+          "workflow",
+          "operations",
+          "employee productivity",
+          "customer support",
+          "adoption",
+          "Claude for Work"
+        ],
+        "exclude": [
+          "pure startup promotion",
+          "model announcement",
+          "partner announcement without implementation evidence"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 8,
+        "prefer_primary_source": true,
+        "require_one_of": [
+          "workflow_change",
+          "implementation_detail",
+          "adoption_metrics",
+          "productivity_data"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "ethan_mollick_one_useful_thing",
+      "name": "Ethan Mollick / One Useful Thing",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "work_org_researcher",
+      "evidence_class": "interpretation",
+      "platform": "rss",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展",
+        "AI个人工作系统"
+      ],
+      "why_follow": "连接AI能力、实验研究与真实工作设计，是从技术变化推到组织和管理含义的重要解释层。",
+      "expected_evidence": [
+        "experiment",
+        "research_finding",
+        "workflow_change",
+        "manager_role",
+        "human_ai_collaboration",
+        "failure_case"
+      ],
+      "crawl": {
+        "method": "rss",
+        "url": "https://www.oneusefulthing.org/feed",
+        "detail_page": true
+      },
+      "filters": {
+        "include": [
+          "experiment",
+          "study",
+          "agent",
+          "work",
+          "management",
+          "organization",
+          "human-AI",
+          "workflow"
+        ],
+        "exclude": [
+          "generic AI commentary",
+          "book promotion",
+          "event promotion"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 7,
+        "minimum_evidence_density": 7,
+        "prefer_primary_source": false,
+        "require_one_of": [
+          "experiment",
+          "research_finding",
+          "workflow_change",
+          "failure_case"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "simon_willison",
+      "name": "Simon Willison",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "builder_operator",
+      "evidence_class": "builder_operator",
+      "platform": "atom",
+      "language": "EN",
+      "knowledge_domains": [
+        "AI能力演进",
+        "企业AI深度应用",
+        "AI个人工作系统"
+      ],
+      "why_follow": "获取Agent、工具调用、模型行为、安全边界和真实构建实验中的技术机制与失败细节。",
+      "expected_evidence": [
+        "experiment",
+        "agent_architecture",
+        "implementation_detail",
+        "failure_case",
+        "security_mechanism",
+        "tool_use"
+      ],
+      "crawl": {
+        "method": "atom",
+        "url": "https://simonwillison.net/atom/entries/",
+        "detail_page": true
+      },
+      "filters": {
+        "include": [
+          "agent",
+          "tool use",
+          "prompt injection",
+          "security",
+          "experiment",
+          "implementation",
+          "model behavior"
+        ],
+        "exclude": [
+          "minor model release",
+          "visual demo without enterprise implication",
+          "link post without added analysis"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 7,
+        "prefer_primary_source": false,
+        "require_one_of": [
+          "implementation_detail",
+          "failure_case",
+          "security_mechanism",
+          "agent_architecture"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "langchain_blog",
+      "name": "LangChain / LangGraph Blog",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "builder_operator",
+      "evidence_class": "builder_operator",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "AI能力演进",
+        "企业AI深度应用",
+        "AI个人工作系统"
+      ],
+      "why_follow": "获取生产级Agent架构、评估、运行时控制、企业案例和多Agent工作流的工程实践。",
+      "expected_evidence": [
+        "agent_architecture",
+        "implementation_detail",
+        "enterprise_case",
+        "evaluation_method",
+        "observability",
+        "runtime_governance",
+        "failure_case"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://www.langchain.com/blog",
+        "detail_page": true,
+        "link_scope": "/blog/"
+      },
+      "filters": {
+        "include": [
+          "Agent Architecture",
+          "Case Studies",
+          "Observability & Evals",
+          "Deployment",
+          "LangGraph",
+          "Deep Agents",
+          "enterprise",
+          "production"
+        ],
+        "exclude": [
+          "newsletter",
+          "company announcement",
+          "partner promotion without technical detail",
+          "basic tutorial"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 8,
+        "prefer_primary_source": true,
+        "require_one_of": [
+          "agent_architecture",
+          "implementation_detail",
+          "enterprise_case",
+          "evaluation_method",
+          "runtime_governance"
+        ]
+      },
+      "max_items_per_run": 1
+    },
+    {
+      "id": "mckinsey_quantumblack_ai",
+      "name": "McKinsey / QuantumBlack AI Insights",
+      "status": "active",
+      "priority": "P0",
+      "source_role": "primary_enterprise_research",
+      "evidence_class": "primary_evidence",
+      "platform": "web",
+      "language": "EN",
+      "knowledge_domains": [
+        "企业AI深度应用",
+        "AI时代组织变革",
+        "AI时代人才发展",
+        "AI创业机会"
+      ],
+      "why_follow": "获取跨企业AI采用、ROI、Agent经济性、组织重构和规模化落地的调查、报告与案例框架。",
+      "expected_evidence": [
+        "survey_data",
+        "enterprise_case",
+        "roi",
+        "agent_economics",
+        "workflow_change",
+        "operating_model",
+        "implementation_detail"
+      ],
+      "crawl": {
+        "method": "index_page",
+        "url": "https://www.mckinsey.com/capabilities/quantumblack/our-insights",
+        "detail_page": true,
+        "link_scope": "/capabilities/quantumblack/"
+      },
+      "filters": {
+        "include": [
+          "state of AI",
+          "ROI",
+          "agentic workflows",
+          "operating model",
+          "management",
+          "enterprise",
+          "implementation",
+          "survey",
+          "case"
+        ],
+        "exclude": [
+          "generic prediction",
+          "industry outlook without AI implementation evidence",
+          "marketing-style thought leadership"
+        ]
+      },
+      "quality_rules": {
+        "minimum_specificity": 8,
+        "minimum_evidence_density": 8,
+        "prefer_primary_source": false,
+        "require_one_of": [
+          "survey_data",
+          "enterprise_case",
+          "roi",
+          "agent_economics",
+          "workflow_change"
+        ]
+      },
+      "max_items_per_run": 1
+    }
+  ]
+}
