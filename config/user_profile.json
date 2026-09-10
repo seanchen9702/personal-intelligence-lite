@@ -1,0 +1,90 @@
+{
+  "identity": {
+    "role": "企业组织与AI融合方向的实践型探索者",
+    "background": [
+      "HR与学习发展实践经验",
+      "企业人才培养项目经验",
+      "组织发展与管理者培养经验"
+    ],
+    "current_position": "学习发展与组织能力建设相关岗位"
+  },
+
+  "mission": {
+    "primary": "理解AI如何改变企业工作方式，并连接技术、组织、人才形成落地方法",
+    "secondary": [
+      "建立企业AI深度应用判断体系",
+      "探索AI时代人才发展新模式",
+      "发现未来职业与商业机会"
+    ]
+  },
+
+  "research_domains": {
+
+    "enterprise_ai": {
+      "priority": 1,
+      "weight": 40,
+      "questions": [
+        "企业如何真正落地AI",
+        "哪些工作流程正在被AI重构",
+        "Agent如何进入组织"
+      ]
+    },
+
+    "organization_talent": {
+      "priority": 2,
+      "weight": 25,
+      "questions": [
+        "AI时代管理者能力如何变化",
+        "人才培养体系如何调整",
+        "组织设计如何变化"
+      ]
+    },
+
+    "business_opportunity": {
+      "priority": 3,
+      "weight": 15,
+      "questions": [
+        "AI带来的新商业机会",
+        "个人如何形成长期竞争优势"
+      ]
+    },
+
+    "future_society": {
+      "priority": 4,
+      "weight": 10,
+      "questions": [
+        "AI如何改变社会结构",
+        "未来工作如何变化"
+      ]
+    },
+
+    "civilization_travel": {
+      "priority": 5,
+      "weight": 10,
+      "questions": [
+        "文明如何形成",
+        "文化体验如何设计"
+      ]
+    }
+  },
+
+
+  "asset_goals": [
+    {
+      "type": "framework",
+      "goal": "形成企业AI落地方法论"
+    },
+    {
+      "type": "case_library",
+      "goal": "建立企业AI实践案例库"
+    },
+    {
+      "type": "trend_judgment",
+      "goal": "形成长期趋势判断"
+    },
+    {
+      "type": "content",
+      "goal": "未来输出文章、课程、咨询产品"
+    }
+  ]
+}
