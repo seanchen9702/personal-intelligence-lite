@@ -17,6 +17,9 @@ from openai import OpenAI
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES_PATH = ROOT / "config" / "sources.json"
+USER_PROFILE_PATH = ROOT / "config" / "user_profile_v0.6.1.json"
+SOURCE_MATRIX_PATH = ROOT / "config" / "source_matrix_v0.6.1.json"
+ANALYSIS_SCHEMA_PATH = ROOT / "config" / "analysis_schema_v0.6.1.json"
 ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
 EVENTS_PATH = ROOT / "data" / "events.json"
@@ -24,7 +27,7 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.5.1.1"
+ANALYSIS_VERSION = "v0.6.1"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "6"))
@@ -434,6 +437,14 @@ def load_json(path, default):
         return default
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_intelligence_context():
+    return {
+        "user_profile": load_json(USER_PROFILE_PATH, {}),
+        "source_matrix": load_json(SOURCE_MATRIX_PATH, {}),
+        "analysis_schema": load_json(ANALYSIS_SCHEMA_PATH, {})
+    }
 
 
 def save_json(path, data):
@@ -1081,7 +1092,15 @@ def analyze_item(client, candidate, material):
         "quality_rules": source.get("quality_rules", {})
     }
 
+    intelligence_context = load_intelligence_context()
+
     prompt = f"""
+【个人认知配置】
+{json.dumps(intelligence_context.get("user_profile", {}), ensure_ascii=False, indent=2)[:6000]}
+
+【信息源价值配置】
+{json.dumps(intelligence_context.get("source_matrix", {}), ensure_ascii=False, indent=2)[:6000]}
+
 【来源配置】
 {json.dumps(source_context, ensure_ascii=False, indent=2)}
 
