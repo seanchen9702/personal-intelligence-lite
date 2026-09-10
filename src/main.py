@@ -17,9 +17,7 @@ from openai import OpenAI
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES_PATH = ROOT / "config" / "sources.json"
-USER_PROFILE_PATH = ROOT / "config" / "user_profile_v0.6.1.json"
-SOURCE_MATRIX_PATH = ROOT / "config" / "source_matrix_v0.6.1.json"
-ANALYSIS_SCHEMA_PATH = ROOT / "config" / "analysis_schema_v0.6.1.json"
+USER_PROFILE_PATH = ROOT / "config" / "user_profile.json"
 ITEMS_PATH = ROOT / "data" / "items.json"
 PROCESSED_PATH = ROOT / "data" / "processed.json"
 EVENTS_PATH = ROOT / "data" / "events.json"
@@ -27,7 +25,7 @@ THEMES_PATH = ROOT / "data" / "themes.json"
 DAILY_BRIEF_PATH = ROOT / "data" / "daily_brief.md"
 DETAILS_DIR = ROOT / "data" / "details"
 
-ANALYSIS_VERSION = "v0.6.1"
+ANALYSIS_VERSION = "v0.6.1-personal"
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
 MAX_NEW_ITEMS = int(os.getenv("MAX_NEW_ITEMS", "6"))
@@ -48,19 +46,19 @@ ITEM_SCHEMA = {
         "scores": {
             "type": "object",
             "properties": {
-                "enterprise_ai_value": {"type": "integer", "minimum": 0, "maximum": 20},
+                "strategic_relevance": {"type": "integer", "minimum": 0, "maximum": 20},
                 "practical_value": {"type": "integer", "minimum": 0, "maximum": 15},
                 "cognitive_upgrade": {"type": "integer", "minimum": 0, "maximum": 15},
-                "org_talent_value": {"type": "integer", "minimum": 0, "maximum": 10},
+                "personal_asset_value": {"type": "integer", "minimum": 0, "maximum": 10},
                 "information_quality": {"type": "integer", "minimum": 0, "maximum": 10},
                 "specificity": {"type": "integer", "minimum": 0, "maximum": 15},
                 "evidence_density": {"type": "integer", "minimum": 0, "maximum": 15}
             },
             "required": [
-                "enterprise_ai_value",
+                "strategic_relevance",
                 "practical_value",
                 "cognitive_upgrade",
-                "org_talent_value",
+                "personal_asset_value",
                 "information_quality",
                 "specificity",
                 "evidence_density"
@@ -70,23 +68,27 @@ ITEM_SCHEMA = {
         "knowledge_domain": {
             "type": "string",
             "enum": [
-                "AI能力演进",
                 "企业AI深度应用",
-                "AI时代组织变革",
-                "AI时代人才发展",
-                "AI个人工作系统",
-                "AI创业机会",
-                "未来社会观察"
+                "AI能力与技术演进",
+                "组织与人才发展",
+                "管理与领导力",
+                "商业与创业机会",
+                "未来社会与科技",
+                "文明与旅行研究",
+                "个人成长与工作系统",
+                "其他高价值信息"
             ]
         },
         "title_zh": {"type": "string"},
         "summary_zh": {"type": "string"},
         "core_judgment": {"type": "string"},
         "why_it_matters": {"type": "string"},
+
         "evidence_types_detected": {
             "type": "array",
             "items": {"type": "string"}
         },
+
         "evidence": {
             "type": "object",
             "properties": {
@@ -128,6 +130,7 @@ ITEM_SCHEMA = {
             ],
             "additionalProperties": False
         },
+
         "claim_map": {
             "type": "object",
             "properties": {
@@ -144,6 +147,147 @@ ITEM_SCHEMA = {
             ],
             "additionalProperties": False
         },
+
+        "evidence_card": {
+            "type": "object",
+            "properties": {
+                "basic": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {"type": "string"},
+                        "topic": {"type": "string"},
+                        "source_quality": {"type": "string", "enum": ["high", "medium", "low"]}
+                    },
+                    "required": ["domain", "topic", "source_quality"],
+                    "additionalProperties": False
+                },
+                "facts": {"type": "array", "items": {"type": "string"}},
+                "data_points": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "metric": {"type": "string"},
+                            "value": {"type": "string"},
+                            "context": {"type": "string"}
+                        },
+                        "required": ["metric", "value", "context"],
+                        "additionalProperties": False
+                    }
+                },
+                "cases": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "actor": {"type": "string"},
+                            "context": {"type": "string"},
+                            "action": {"type": "string"},
+                            "result": {"type": "string"},
+                            "limitation": {"type": "string"}
+                        },
+                        "required": ["actor", "context", "action", "result", "limitation"],
+                        "additionalProperties": False
+                    }
+                },
+                "interpretation": {
+                    "type": "object",
+                    "properties": {
+                        "author_view": {"type": "string"},
+                        "my_inference": {"type": "string"},
+                        "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+                    },
+                    "required": ["author_view", "my_inference", "confidence"],
+                    "additionalProperties": False
+                },
+                "mechanism": {
+                    "type": "object",
+                    "properties": {
+                        "trigger": {"type": "string"},
+                        "how_it_works": {"type": "string"},
+                        "behavior_or_work_change": {"type": "string"},
+                        "organization_or_system_change": {"type": "string"}
+                    },
+                    "required": [
+                        "trigger",
+                        "how_it_works",
+                        "behavior_or_work_change",
+                        "organization_or_system_change"
+                    ],
+                    "additionalProperties": False
+                },
+                "uncertainties": {"type": "array", "items": {"type": "string"}},
+                "research_questions": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": [
+                "basic",
+                "facts",
+                "data_points",
+                "cases",
+                "interpretation",
+                "mechanism",
+                "uncertainties",
+                "research_questions"
+            ],
+            "additionalProperties": False
+        },
+
+        "personal_connection": {
+            "type": "object",
+            "properties": {
+                "current_work": {"type": "string"},
+                "career_growth": {"type": "string"},
+                "future_opportunity": {"type": "string"},
+                "personal_interest": {"type": "string"},
+                "possible_asset": {"type": "string"}
+            },
+            "required": [
+                "current_work",
+                "career_growth",
+                "future_opportunity",
+                "personal_interest",
+                "possible_asset"
+            ],
+            "additionalProperties": False
+        },
+
+        "asset_potential": {
+            "type": "object",
+            "properties": {
+                "should_build": {"type": "boolean"},
+                "asset_type": {
+                    "type": "string",
+                    "enum": [
+                        "方法论",
+                        "案例库",
+                        "趋势判断",
+                        "机会池",
+                        "内容素材",
+                        "旅行/文明知识",
+                        "个人工作系统",
+                        "暂不沉淀"
+                    ]
+                },
+                "asset_name": {"type": "string"},
+                "reason": {"type": "string"},
+                "next_step": {"type": "string"}
+            },
+            "required": [
+                "should_build",
+                "asset_type",
+                "asset_name",
+                "reason",
+                "next_step"
+            ],
+            "additionalProperties": False
+        },
+
+        "belief_status": {
+            "type": "string",
+            "enum": ["L0信息", "L1信号", "L2假设", "L3方法论候选", "L4资产候选"]
+        },
+
+        # Compatibility fields used by the existing downstream pipeline.
         "relation_to_me": {
             "type": "object",
             "properties": {
@@ -182,6 +326,10 @@ ITEM_SCHEMA = {
         "evidence_types_detected",
         "evidence",
         "claim_map",
+        "evidence_card",
+        "personal_connection",
+        "asset_potential",
+        "belief_status",
         "relation_to_me",
         "why_read_original",
         "original_reading_focus",
@@ -195,39 +343,121 @@ ITEM_SCHEMA = {
     "additionalProperties": False
 }
 
+
 ITEM_INSTRUCTIONS = """
-你是 Evidence-first Personal Intelligence Advisor。
+你是我的 Personal Intelligence Advisor（个人认知资产助手）。
 
-我的定位：
-从人力资源与组织视角出发，成长为企业AI深度应用落地专家。
-我关注 AI技术 × 企业业务 × 组织与人才 × 创业机会。
+你的任务不是把所有材料都解释成“企业AI”，也不是做普通新闻摘要。
+你的任务是帮助我持续建立可复用、可验证、能够支持职业发展与未来选择的长期认知资产。
 
-最重要的原则：
-先抽取证据，再做判断。
-不要因为作者知名、观点正确、主题热门而加分。
+【分析对象】
+首先根据材料本身判断最合适的知识领域：
+- 企业AI深度应用
+- AI能力与技术演进
+- 组织与人才发展
+- 管理与领导力
+- 商业与创业机会
+- 未来社会与科技
+- 文明与旅行研究
+- 个人成长与工作系统
+- 其他高价值信息
 
-如果去掉企业名、人物、数字、流程、机制、失败细节后，只剩：
-“AI会改变工作”“企业要重视治理”“人机协同重要”“Agent是未来”
-则这是“正确的废话”，必须显著降分。
+企业AI深度应用是当前最重要的战略研究方向，但不是唯一方向。
+不要为了贴合主要方向，强行把其他有价值的信息解释成AI、HR或组织问题。
 
-评分固定100分：
-- enterprise_ai_value 0-20
-- practical_value 0-15
-- cognitive_upgrade 0-15
-- org_talent_value 0-10
-- information_quality 0-10
-- specificity 0-15
-- evidence_density 0-15
+【使用个人画像】
+输入中会提供 user_profile。
+它用于判断“对我是否重要”，而不是限制“什么可以进入系统”。
+如果材料对我的主要职业方向价值一般，但对长期兴趣、文明旅行、商业机会、个人成长或其他长期资产有明显价值，仍可保留并正确分类。
 
-证据要求：
-1. concrete_facts：只写材料明确支持的事实。
-2. numbers_metrics：只列材料中的数字、比例、时间、成本、规模、结果指标。
-3. mechanism_steps：尽量还原“怎么发生 / 怎么做”的过程。
-4. case_details：主体—背景—问题—AI介入—流程变化—人的角色—结果—失败/限制。
-5. claim_map：必须区分事实、作者解释、模型推断、未知。
-6. evidence_types_detected：只从来源配置提供的 expected_evidence 标签里选择真正被材料支持的标签；不支持就不要选。
+【分析顺序】
+必须按以下顺序工作：
+1. 识别领域与主题；
+2. 提取证据；
+3. 区分事实、作者观点、你的推断；
+4. 解释作用机制；
+5. 判断与个人目标的连接；
+6. 判断是否值得沉淀为长期资产；
+7. 最后才评分。
 
-若材料只是摘要或列表页内容，要明确证据有限，不能假装读过全文。
+【Evidence-first原则】
+先证据，后判断。
+
+如果去掉名称、数字、具体动作、流程、机制、案例和限制后，只剩类似：
+“AI会改变工作”
+“企业要重视治理”
+“管理者需要变化”
+“未来充满机会”
+这类正确但没有信息增量的话，必须显著降分。
+
+【评分固定100分】
+- strategic_relevance 0-20：
+  对 user_profile 中主要研究方向、职业发展或长期兴趣的重要程度。
+  企业AI通常权重最高，但高价值的组织、管理、商业、文明、未来社会或个人成长内容同样可以获得高分。
+
+- practical_value 0-15：
+  能否转化为实际行动、实验、设计、决策、项目或观察方法。
+
+- cognitive_upgrade 0-15：
+  是否真正改变、补充或校准现有判断，而不是重复常识。
+
+- personal_asset_value 0-10：
+  是否有潜力沉淀为方法论、案例库、趋势判断、机会池、内容素材、旅行/文明知识或个人工作系统。
+
+- information_quality 0-10：
+  来源可信度、证据质量和论证完整度。
+
+- specificity 0-15：
+  是否有明确人物/机构/对象/动作/过程/机制/结果。
+
+- evidence_density 0-15：
+  是否包含足够事实、数据、案例、机制和限制，而不是概念性评论。
+
+【证据要求】
+evidence 与 evidence_card 必须基于原材料：
+- facts / concrete_facts：只写材料明确支持的事实；
+- data_points / numbers_metrics：没有数字就返回空数组，禁止补造；
+- cases：没有案例就返回空数组；
+- mechanism：解释“为什么会产生这个结果”，不能只重复结论；
+- claim_map：严格区分事实、作者解释、模型推断和未知；
+- uncertainties：主动指出证据边界；
+- research_questions：提出真正值得后续验证的问题，不要生成空泛问题。
+
+对于非AI内容：
+evidence.case_details 中 ai_intervention、workflow_change、human_role 如确实不适用，
+请写“非AI主题，不适用”或依据材料填写对应的一般机制，不要强行AI化。
+
+【个人连接】
+personal_connection 五个维度分别判断：
+- current_work：是否能帮助当前工作；
+- career_growth：是否帮助未来职业竞争力；
+- future_opportunity：是否指向新机会；
+- personal_interest：是否满足重要的长期兴趣与认知建设；
+- possible_asset：最可能沉淀成什么。
+
+如果某维度无明显关系，直接写“无明显直接关系”，不要硬关联。
+
+【资产判断】
+asset_potential：
+只有当材料提供足够独特证据、可复用机制或长期价值时，should_build 才为 true。
+不要每篇文章都建议做框架。
+asset_name 必须具体，例如：
+“Agent人工升级触发条件案例库”
+而不是：
+“AI方法论”。
+
+belief_status：
+- L0信息：知道即可；
+- L1信号：值得继续观察；
+- L2假设：形成了待验证判断；
+- L3方法论候选：已经能抽象出可复用机制；
+- L4资产候选：值得持续积累并可能用于工作、输出、咨询或产品。
+
+【兼容字段】
+relation_to_me 与 personal_connection 保持语义一致；
+asset_type 与 asset_potential 保持语义一致，供现有下游流程继续使用。
+
+若材料只是摘要或列表页内容，必须降低 confidence，并明确材料不完整。
 """
 
 CLUSTER_SCHEMA = {
@@ -247,13 +477,15 @@ CLUSTER_SCHEMA = {
                     "knowledge_domain": {
                         "type": "string",
                         "enum": [
-                            "AI能力演进",
                             "企业AI深度应用",
-                            "AI时代组织变革",
-                            "AI时代人才发展",
-                            "AI个人工作系统",
-                            "AI创业机会",
-                            "未来社会观察"
+                            "AI能力与技术演进",
+                            "组织与人才发展",
+                            "管理与领导力",
+                            "商业与创业机会",
+                            "未来社会与科技",
+                            "文明与旅行研究",
+                            "个人成长与工作系统",
+                            "其他高价值信息"
                         ]
                     },
                     "combined_summary": {"type": "string"},
@@ -317,18 +549,19 @@ CLUSTER_SCHEMA = {
 
 CLUSTER_INSTRUCTIONS = """
 把文章级信息聚合为事件级信息。
-只有同一底层事件、报告、企业案例、产品发布或实验才合并。
+只有同一底层事件、报告、研究、案例、产品发布或实验才合并。
 相似主题但底层事实不同，不合并。
 
-保留：
-- 企业/机构/产品名称
-- 工作任务
-- 数字指标
-- 流程
-- 技术/管理机制
-- 失败、限制和证据缺口
+不同领域都可以形成事件，不要强行AI化。
 
-combined_judgment不能超出成员材料。
+聚合时优先保留：
+- 明确主体与对象
+- 数字、事实和原始证据
+- 具体动作与过程
+- 技术、行为、管理或制度机制
+- 失败、限制、反例和证据缺口
+
+combined_judgment 不能超出成员材料。
 """
 
 THEME_SCHEMA = {
@@ -417,15 +650,24 @@ BRIEF_SCHEMA = {
 }
 
 BRIEF_INSTRUCTIONS = """
-生成 Evidence-first Daily Intelligence。
-最多3条Top内容。
+生成 Personal Intelligence Daily Brief。
+
+目标不是“今天AI发生了什么”，而是：
+今天有哪些高质量证据值得更新我的判断、支持我的工作，或进入长期认知资产。
+
+企业AI深度应用是当前首要方向，但不是唯一方向。
+组织与人才、管理、商业机会、未来社会、文明旅行、个人成长等高价值内容也可以进入Top 3。
+
+最多3条。
 每条必须说明：
-- 为什么有资格进入Top 3
-- 最关键的新证据
-- 它改变了什么判断
-- 对我的企业AI落地能力有什么实际价值
-- 还有什么不能确认
-低证据密度内容不要选。
+- 为什么它有资格进入Top 3；
+- 最关键的新证据；
+- 它真正改变或补充了什么判断；
+- 对我的工作、职业、未来机会、长期兴趣或资产建设有什么实际价值；
+- 还有什么不能确认。
+
+优先证据密度高、具体、可验证、有机制或有反例的内容。
+不要用宏观口号填满日报。
 """
 
 # ---------------------------------------------------------------------
@@ -437,14 +679,6 @@ def load_json(path, default):
         return default
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def load_intelligence_context():
-    return {
-        "user_profile": load_json(USER_PROFILE_PATH, {}),
-        "source_matrix": load_json(SOURCE_MATRIX_PATH, {}),
-        "analysis_schema": load_json(ANALYSIS_SCHEMA_PATH, {})
-    }
 
 
 def save_json(path, data):
@@ -1081,6 +1315,7 @@ def get_tier(pis):
 
 def analyze_item(client, candidate, material):
     source = candidate["source"]
+    user_profile = load_json(USER_PROFILE_PATH, {})
 
     source_context = {
         "name": source.get("name"),
@@ -1092,14 +1327,9 @@ def analyze_item(client, candidate, material):
         "quality_rules": source.get("quality_rules", {})
     }
 
-    intelligence_context = load_intelligence_context()
-
     prompt = f"""
-【个人认知配置】
-{json.dumps(intelligence_context.get("user_profile", {}), ensure_ascii=False, indent=2)[:6000]}
-
-【信息源价值配置】
-{json.dumps(intelligence_context.get("source_matrix", {}), ensure_ascii=False, indent=2)[:6000]}
+【个人画像 user_profile】
+{json.dumps(user_profile, ensure_ascii=False, indent=2)}
 
 【来源配置】
 {json.dumps(source_context, ensure_ascii=False, indent=2)}
@@ -1124,7 +1354,7 @@ def analyze_item(client, candidate, material):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "evidence_first_item_v05",
+                "name": "personal_intelligence_item_v061",
                 "strict": True,
                 "schema": ITEM_SCHEMA
             }
@@ -1151,6 +1381,10 @@ def analyze_item(client, candidate, material):
         "evidence_types_detected": raw["evidence_types_detected"],
         "evidence": raw["evidence"],
         "claim_map": raw["claim_map"],
+        "evidence_card": raw["evidence_card"],
+        "personal_connection": raw["personal_connection"],
+        "asset_potential": raw["asset_potential"],
+        "belief_status": raw["belief_status"],
         "relation_to_me": raw["relation_to_me"],
         "why_read_original": raw["why_read_original"],
         "original_reading_focus": raw["original_reading_focus"],
@@ -1170,14 +1404,17 @@ def analyze_item(client, candidate, material):
 
 def render_detail_page(item):
     a = item["analysis"]
-    ev = a["evidence"]
-    cm = a["claim_map"]
-    case = ev["case_details"]
+    ev = a.get("evidence", {})
+    cm = a.get("claim_map", {})
+    case = ev.get("case_details", {})
+    ec = a.get("evidence_card", {})
+    pc = a.get("personal_connection", {})
+    ap = a.get("asset_potential", {})
 
     lines = [
-        f"# {a['title_zh']}",
+        f"# {a.get('title_zh', item.get('title_original', '未命名内容'))}",
         "",
-        f"> **PIS {a['pis']}｜{a['tier']}｜{a['knowledge_domain']}｜{a['confidence']}**",
+        f"> **PIS {a.get('pis', 0)}｜{a.get('tier', '')}｜{a.get('knowledge_domain', '')}｜{a.get('confidence', '')}｜{a.get('belief_status', '')}**",
         "",
         f"原文：[{item.get('title_original','打开原文')}]({item.get('url','')})",
         "",
@@ -1188,85 +1425,136 @@ def render_detail_page(item):
         "",
         "## 1｜这篇内容真正提供了什么",
         "",
-        a["summary_zh"],
+        a.get("summary_zh", ""),
         "",
-        f"**判断：** {a['core_judgment']}",
+        f"**核心判断：** {a.get('core_judgment', '')}",
         "",
-        "## 2｜检测到的证据类型",
+        "## 2｜认知证据卡",
         ""
     ]
 
-    if a.get("evidence_types_detected"):
-        lines += [f"- `{x}`" for x in a["evidence_types_detected"]]
-    else:
-        lines += ["- 未检测到来源期望的核心证据类型"]
+    facts = ec.get("facts", [])
+    if facts:
+        lines += ["### 事实", ""]
+        lines += [f"- {x}" for x in facts]
+        lines.append("")
 
-    lines += ["", "## 3｜关键证据", ""]
+    data_points = ec.get("data_points", [])
+    if data_points:
+        lines += ["### 数据", ""]
+        for x in data_points:
+            lines.append(
+                f"- **{x.get('metric','')}：{x.get('value','')}**｜{x.get('context','')}"
+            )
+        lines.append("")
 
-    if ev["concrete_facts"]:
+    cases = ec.get("cases", [])
+    if cases:
+        lines += ["### 案例", ""]
+        for x in cases:
+            lines += [
+                f"- **{x.get('actor','')}**｜{x.get('context','')}",
+                f"  - 动作：{x.get('action','')}",
+                f"  - 结果：{x.get('result','')}",
+                f"  - 限制：{x.get('limitation','')}"
+            ]
+        lines.append("")
+
+    mechanism = ec.get("mechanism", {})
+    lines += [
+        "### 作用机制",
+        "",
+        f"- **触发变化：** {mechanism.get('trigger','')}",
+        f"- **如何发生：** {mechanism.get('how_it_works','')}",
+        f"- **行为/工作变化：** {mechanism.get('behavior_or_work_change','')}",
+        f"- **组织/系统变化：** {mechanism.get('organization_or_system_change','')}",
+        "",
+        "### 作者观点 vs 我的推断",
+        "",
+        f"- **作者观点：** {ec.get('interpretation', {}).get('author_view','')}",
+        f"- **系统推断：** {ec.get('interpretation', {}).get('my_inference','')}",
+        "",
+        "### 仍不确定",
+        ""
+    ]
+
+    uncertainties = ec.get("uncertainties", [])
+    lines += [f"- {x}" for x in uncertainties] or ["- 暂无额外不确定性记录。"]
+
+    lines += ["", "### 值得继续追的问题", ""]
+    questions = ec.get("research_questions", [])
+    lines += [f"- {x}" for x in questions] or ["- 暂无。"]
+
+    lines += [
+        "",
+        "## 3｜与你的关系",
+        "",
+        f"**当前工作：** {pc.get('current_work','')}",
+        "",
+        f"**职业成长：** {pc.get('career_growth','')}",
+        "",
+        f"**未来机会：** {pc.get('future_opportunity','')}",
+        "",
+        f"**长期兴趣：** {pc.get('personal_interest','')}",
+        "",
+        f"**可能沉淀：** {pc.get('possible_asset','')}",
+        "",
+        "## 4｜资产潜力",
+        "",
+        f"**是否值得沉淀：** {'是' if ap.get('should_build') else '否'}",
+        "",
+        f"**资产类型：** {ap.get('asset_type','')}",
+        "",
+        f"**资产名称：** {ap.get('asset_name','')}",
+        "",
+        f"**原因：** {ap.get('reason','')}",
+        "",
+        f"**下一步：** {ap.get('next_step','')}",
+        "",
+        "## 5｜底层原始证据",
+        ""
+    ]
+
+    concrete = ev.get("concrete_facts", [])
+    if concrete:
         lines += ["### 具体事实", ""]
-        lines += [f"- {x}" for x in ev["concrete_facts"]]
+        lines += [f"- {x}" for x in concrete]
         lines.append("")
 
-    if ev["numbers_metrics"]:
+    numbers = ev.get("numbers_metrics", [])
+    if numbers:
         lines += ["### 数字与指标", ""]
-        lines += [f"- **{x}**" for x in ev["numbers_metrics"]]
+        lines += [f"- **{x}**" for x in numbers]
         lines.append("")
 
-    if ev["mechanism_steps"]:
-        lines += ["### 机制 / 过程", ""]
-        lines += [f"{i}. {x}" for i, x in enumerate(ev["mechanism_steps"], 1)]
+    steps = ev.get("mechanism_steps", [])
+    if steps:
+        lines += ["### 原文过程 / 机制", ""]
+        lines += [f"{i}. {x}" for i, x in enumerate(steps, 1)]
         lines.append("")
 
     lines += [
-        "## 4｜案例过程",
-        "",
-        f"**主体：** {case['actor']}",
-        "",
-        f"**背景：** {case['context']}",
-        "",
-        f"**原问题：** {case['problem']}",
-        "",
-        f"**AI如何介入：** {case['ai_intervention']}",
-        "",
-        f"**流程发生了什么变化：** {case['workflow_change']}",
-        "",
-        f"**人的角色：** {case['human_role']}",
-        "",
-        f"**结果：** {case['outcome']}",
-        "",
-        f"**失败 / 限制：** {case['failure_limits']}",
-        "",
-        "## 5｜事实、解释与推断分开看",
+        "## 6｜事实、作者解释与模型推断分开看",
         "",
         "### 原文明示/报告的事实"
     ]
-
-    lines += [f"- {x}" for x in cm["confirmed_or_reported_facts"]] or ["- 原文未提供足够事实。"]
+    lines += [f"- {x}" for x in cm.get("confirmed_or_reported_facts", [])] or ["- 原文未提供足够事实。"]
     lines += ["", "### 作者的解释"]
-    lines += [f"- {x}" for x in cm["author_interpretations"]] or ["- 无明确作者解释。"]
-    lines += ["", "### 系统基于材料做的推断"]
-    lines += [f"- {x}" for x in cm["model_inferences"]] or ["- 无额外推断。"]
-    lines += ["", "### 仍然不知道什么"]
-    lines += [f"- {x}" for x in cm["unknowns"]] or ["- 暂无。"]
+    lines += [f"- {x}" for x in cm.get("author_interpretations", [])] or ["- 无明确作者解释。"]
+    lines += ["", "### 模型基于材料的推断"]
+    lines += [f"- {x}" for x in cm.get("model_inferences", [])] or ["- 无额外推断。"]
+    lines += ["", "### 尚未知"]
+    lines += [f"- {x}" for x in cm.get("unknowns", [])] or ["- 暂无。"]
 
     lines += [
         "",
-        "## 6｜为什么与你有关",
-        "",
-        f"**当前工作：** {a['relation_to_me']['current_work']}",
-        "",
-        f"**专家成长：** {a['relation_to_me']['expert_growth']}",
-        "",
-        f"**长期价值：** {a['relation_to_me']['long_term_value']}",
-        "",
         "## 7｜要不要看原文",
         "",
-        a["why_read_original"],
+        a.get("why_read_original", ""),
         ""
     ]
 
-    if a["original_reading_focus"]:
+    if a.get("original_reading_focus"):
         lines += ["### 打开原文后重点找这些", ""]
         lines += [f"- {x}" for x in a["original_reading_focus"]]
         lines.append("")
@@ -1276,11 +1564,10 @@ def render_detail_page(item):
         "",
         "## 8｜反方与限制",
         "",
-        a["counterpoint"]
+        a.get("counterpoint", "")
     ]
 
     return "\n".join(lines)
-
 
 def write_detail_page(item):
     DETAILS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1489,6 +1776,8 @@ def build_themes(client, events):
     if len(events) < 2:
         return []
 
+    user_profile = load_json(USER_PROFILE_PATH, {})
+
     payload = [{
         "event_id": e["event_id"],
         "event_title": e["event_title"],
@@ -1572,11 +1861,14 @@ def generate_daily_brief(client, events, items):
         response = client.responses.create(
             model=MODEL,
             instructions=BRIEF_INSTRUCTIONS,
-            input=json.dumps(payload, ensure_ascii=False),
+            input=json.dumps(
+                {"user_profile": user_profile, "events": payload},
+                ensure_ascii=False
+            ),
             text={
                 "format": {
                     "type": "json_schema",
-                    "name": "daily_brief_v05",
+                    "name": "daily_brief_v061",
                     "strict": True,
                     "schema": BRIEF_SCHEMA
                 }
@@ -1586,7 +1878,7 @@ def generate_daily_brief(client, events, items):
         brief = json.loads(response.output_text)
 
         lines = [
-            f"# Evidence-first Daily Intelligence｜{today}",
+            f"# Personal Intelligence Brief｜{today}",
             "",
             f"> **{brief['headline']}**",
             "",
@@ -1659,7 +1951,7 @@ def generate_daily_brief(client, events, items):
             "",
             "---",
             "",
-            "> 使用方式：先扫Top 3；只有关键证据真正与你相关时，再下钻证据卡和原文。"
+            "> 使用方式：先看真正改变判断的证据，再决定是否下钻证据卡、原文或沉淀为长期资产。"
         ]
 
         return "\n".join(lines)
@@ -1667,7 +1959,7 @@ def generate_daily_brief(client, events, items):
     except Exception as exc:
         print(f"[WARN] Brief生成失败，使用降级版: {exc}")
 
-        lines = [f"# Evidence-first Daily Intelligence｜{today}", ""]
+        lines = [f"# Personal Intelligence Brief｜{today}", ""]
         for event in selected[:3]:
             lines += [f"## {event['event_title']}", ""]
             for x in event.get("key_evidence", [])[:5]:
