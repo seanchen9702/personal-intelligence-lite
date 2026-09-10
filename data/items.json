@@ -322,7 +322,7 @@
     },
     "event": {
       "event_id": "evt_3a1d098fa3da",
-      "event_title": "企业AI从聊天工具转向可授权的Agent任务",
+      "event_title": "企业AI从聊天转向可授权、可执行、可审查的Agent任务",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -409,8 +409,8 @@
     },
     "event": {
       "event_id": "evt_9c0bdc3b20f1",
-      "event_title": "企业AI竞争转向任务模型、系统工程与异构算力",
-      "event_type": "报告/研究",
+      "event_title": "AI竞争从通用模型转向任务模型、系统工程与异构算力协同",
+      "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
     }
@@ -456,8 +456,8 @@
     },
     "event": {
       "event_id": "evt_ab12481175ff",
-      "event_title": "Claude Fable 5.1推理强度对SVG质量、成本和时延的影响",
-      "event_type": "案例",
+      "event_title": "Claude Fable 5.1推理强度实验：质量提升伴随成本与时延非线性上升",
+      "event_type": "报告/研究",
       "cluster_size": 1,
       "is_cross_source": false
     }
@@ -503,7 +503,7 @@
     },
     "event": {
       "event_id": "evt_e53691799f9e",
-      "event_title": "编码代理将软件生产瓶颈转向认知容量与概念完整性",
+      "event_title": "编码代理将软件生产瓶颈转移到认知容量与概念完整性",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -550,7 +550,7 @@
     },
     "event": {
       "event_id": "evt_517370741c36",
-      "event_title": "ChatGPT Work成为可执行的云端Agent工作环境",
+      "event_title": "ChatGPT Work成为具备云端执行环境的Agent工作平台",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -597,7 +597,7 @@
     },
     "event": {
       "event_id": "evt_28b4d4894e7b",
-      "event_title": "企业工作方式从协同智能转向Agent管理",
+      "event_title": "企业工作方式从协同使用聊天机器人转向管理智能代理",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -804,8 +804,8 @@
     "detail_path": "details/097582375e87.md",
     "event": {
       "event_id": "evt_097582375e87",
-      "event_title": "Qwen 3.8 27B本地模型的多模态与工具调用测试",
-      "event_type": "案例",
+      "event_title": "Qwen 3.8 27B本地模型实验：多模态与工具能力可用，但推理配置和速度制约落地",
+      "event_type": "报告/研究",
       "cluster_size": 1,
       "is_cross_source": false
     }
@@ -956,8 +956,8 @@
     "detail_path": "details/a4aa2e5dc2a7.md",
     "event": {
       "event_id": "evt_a4aa2e5dc2a7",
-      "event_title": "Claude 5 Fable长时自主研究与软件开发实验",
-      "event_type": "案例",
+      "event_title": "Claude Fable长时自主工作流实验：模型承担研究、编码与验证，人类负责目标和验收",
+      "event_type": "报告/研究",
       "cluster_size": 1,
       "is_cross_source": false
     }
@@ -1120,7 +1120,7 @@
     "detail_path": "details/309b0638866e.md",
     "event": {
       "event_id": "evt_309b0638866e",
-      "event_title": "AI自动求职与小费免税政策对一线岗位竞争的影响假设",
+      "event_title": "AI自动求职与小费税收优惠可能重塑美国一线岗位竞争",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -1371,7 +1371,7 @@
     "detail_path": "details/8f2641506fcb.md",
     "event": {
       "event_id": "evt_8f2641506fcb",
-      "event_title": "人机共存中的动态权责与审核机制",
+      "event_title": "人机共存下的动态权责：AI成为执行者、评审者与内容分发门卫",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -1528,10 +1528,10 @@
     },
     "detail_path": "details/2b6e69b6599e.md",
     "event": {
-      "event_id": "evt_52ddd24f17c1",
-      "event_title": "Microsoft Work Trend Index对无限工作日与Frontier Firm的分析",
+      "event_id": "evt_856a939995d4",
+      "event_title": "2025微软Work Trend Index：从工作碎片化到Frontier Firm的人机组织转型",
       "event_type": "报告/研究",
-      "cluster_size": 2,
+      "cluster_size": 3,
       "is_cross_source": false
     }
   },
@@ -1795,7 +1795,7 @@
     "detail_path": "details/99b9a275581f.md",
     "event": {
       "event_id": "evt_99b9a275581f",
-      "event_title": "Carvana用Claude Tag重构Slack生产告警到修复的研发运维闭环",
+      "event_title": "Carvana将Slack生产告警接入Claude Tag，形成调查、修复与发布验证闭环",
       "event_type": "案例",
       "cluster_size": 1,
       "is_cross_source": false
@@ -1939,7 +1939,7 @@
     "detail_path": "details/2549cf95af84.md",
     "event": {
       "event_id": "evt_2549cf95af84",
-      "event_title": "LangSmith面向Agent全生命周期的工程平台",
+      "event_title": "LangSmith：覆盖Agent构建、评估、部署、监控和治理的工程平台",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -2102,10 +2102,10 @@
     },
     "detail_path": "details/a316b29ef60d.md",
     "event": {
-      "event_id": "evt_52ddd24f17c1",
-      "event_title": "Microsoft Work Trend Index对无限工作日与Frontier Firm的分析",
+      "event_id": "evt_856a939995d4",
+      "event_title": "2025微软Work Trend Index：从工作碎片化到Frontier Firm的人机组织转型",
       "event_type": "报告/研究",
-      "cluster_size": 2,
+      "cluster_size": 3,
       "is_cross_source": false
     }
   },
@@ -2376,7 +2376,7 @@
     "detail_path": "details/3b6a2aa04167.md",
     "event": {
       "event_id": "evt_3b6a2aa04167",
-      "event_title": "Qonto在银行应用中部署Claude财务操作代理",
+      "event_title": "Qonto将财务行政代理嵌入银行应用，以用户确认约束高风险执行",
       "event_type": "案例",
       "cluster_size": 1,
       "is_cross_source": false
@@ -2524,7 +2524,7 @@
     "detail_path": "details/b592e3334bcd.md",
     "event": {
       "event_id": "evt_b592e3334bcd",
-      "event_title": "LangSmith Engine从生产Trace到Agent修复的自动化闭环",
+      "event_title": "LangSmith Engine：从生产Trace发现Agent问题并生成可审查修复",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -2687,7 +2687,14 @@
       "drop_reason": null,
       "source_depth": "full_page_or_long_feed"
     },
-    "detail_path": "details/7e3fdc760e37.md"
+    "detail_path": "details/7e3fdc760e37.md",
+    "event": {
+      "event_id": "evt_856a939995d4",
+      "event_title": "2025微软Work Trend Index：从工作碎片化到Frontier Firm的人机组织转型",
+      "event_type": "报告/研究",
+      "cluster_size": 3,
+      "is_cross_source": false
+    }
   },
   {
     "id": "itm_b4e5e19602013270",
@@ -2849,7 +2856,14 @@
       "drop_reason": null,
       "source_depth": "full_page_or_long_feed"
     },
-    "detail_path": "details/4408c3dfc0e6.md"
+    "detail_path": "details/4408c3dfc0e6.md",
+    "event": {
+      "event_id": "evt_4408c3dfc0e6",
+      "event_title": "Pictet在风险和数据边界内分阶段推广Claude Code与Claude Cowork",
+      "event_type": "案例",
+      "cluster_size": 1,
+      "is_cross_source": false
+    }
   },
   {
     "id": "itm_3779f15ee9f2dda5",
@@ -2999,6 +3013,214 @@
       "drop_reason": null,
       "source_depth": "full_page_or_long_feed"
     },
-    "detail_path": "details/11eeb0d79ee6.md"
+    "detail_path": "details/11eeb0d79ee6.md",
+    "event": {
+      "event_id": "evt_11eeb0d79ee6",
+      "event_title": "LangSmith Agent可观测性：通过Trace、监控和告警追踪生产行为",
+      "event_type": "产品/发布",
+      "cluster_size": 1,
+      "is_cross_source": false
+    }
+  },
+  {
+    "id": "itm_85c3837bb0eefc6a",
+    "source_id": "langchain_blog",
+    "source_name": "LangChain / LangGraph Blog",
+    "source_role": "builder_operator",
+    "evidence_class": "builder_operator",
+    "platform": "web",
+    "title_original": "Evaluation Score and improve agent performance",
+    "url": "https://www.langchain.com/langsmith/evaluation",
+    "published": "",
+    "discovery_method": "index_page",
+    "processed_at_utc": "2026-09-10T07:56:45.965389+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis_version": "v0.6.1-personal",
+    "analysis": {
+      "analysis_version": "v0.6.1-personal",
+      "keep": true,
+      "pis": 88,
+      "tier": "Daily",
+      "scores": {
+        "strategic_relevance": 18,
+        "practical_value": 14,
+        "cognitive_upgrade": 13,
+        "personal_asset_value": 9,
+        "information_quality": 7,
+        "specificity": 14,
+        "evidence_density": 13
+      },
+      "knowledge_domain": "企业AI深度应用",
+      "title_zh": "Agent持续评估：从离线测试到生产反馈的质量改进闭环",
+      "summary_zh": "LangSmith介绍了一套面向LLM应用和AI Agent的评估体系，包括离线评估、在线评估、专家反馈、LLM-as-judge、轨迹分析、提示词对比和CI/CD集成。其核心不是单次验收，而是将Agent质量评估嵌入开发、上线和生产运行全过程。",
+      "core_judgment": "企业要让Agent进入生产环境，关键能力不只是构建工作流，而是建立可持续的评估与改进闭环：用数据集做离线回归测试，用生产交互做在线质量监测，用人工反馈校准自动评估，并将评估阈值接入发布流程。该材料足以形成Agent评估方法论候选，但由于主要是供应商产品介绍，缺少独立验证、真实客户结果和量化改进数据，暂不应视为已证实的最佳实践。",
+      "why_it_matters": "对企业AI落地而言，Agent的输出具有非确定性，传统软件测试无法覆盖其回答质量、工具调用路径和多轮交互行为。材料提供了一个较完整的质量治理框架，尤其有助于你研究如何把Agent从“能运行”推进到“可度量、可监控、可持续改进”，并连接人才反馈、业务专家参与和组织流程。",
+      "evidence_types_detected": [
+        "agent_architecture",
+        "implementation_detail",
+        "evaluation_method",
+        "observability",
+        "runtime_governance",
+        "human_feedback",
+        "failure_limit"
+      ],
+      "evidence": {
+        "concrete_facts": [
+          "材料将评估分为离线评估和在线评估两类。",
+          "离线评估针对经过整理的数据集，在开发阶段比较不同Agent版本、发现回归问题。",
+          "在线评估针对生产环境中的用户交互进行实时评分，用于发现问题和衡量质量。",
+          "LangSmith支持人工评估、启发式检查、LLM-as-judge、成对比较以及使用Python或TypeScript编写的自定义评估器。",
+          "材料称人工评估可以通过annotation queues将运行记录分配给领域专家，并把反馈用于校准自动评估、改进提示词或扩充测试数据集。",
+          "Agent评估可以记录完整的执行轨迹、工具调用和推理步骤，并对中间决策与Agent行为进行评分。",
+          "材料称评估可以集成pytest、Vitest和GitHub workflows，并在指标低于阈值时自动使流水线失败。",
+          "RAG评估可以将检索质量与生成质量分开，材料举例提到context precision和faithfulness等指标。",
+          "LangSmith声称自身与具体Agent框架无关，可通过SDK或API接收其他技术栈发送的trace。"
+        ],
+        "numbers_metrics": [],
+        "mechanism_steps": [
+          "先用人工整理的数据集或从生产轨迹中抽取的样本，形成可重复运行的评估集合。",
+          "在开发阶段对不同提示词、模型、Agent版本运行相同数据集，进行横向比较并识别回归。",
+          "通过启发式规则、LLM-as-judge或自定义业务逻辑，将回答正确性、幻觉、护栏遵循、工具调用等维度转化为评估信号。",
+          "将部分生产运行记录实时评分，用于发现质量漂移和新的失败模式。",
+          "把低置信度、异常或有争议的运行记录交给领域专家复核。",
+          "用专家反馈校准自动评估器，并将高质量反馈沉淀为新测试样本、提示词改进依据或业务规则。",
+          "将指标阈值接入CI/CD，使Agent质量下降从上线后的被动事故变成发布前的主动拦截。"
+        ],
+        "named_entities": [
+          "LangSmith",
+          "LangChain",
+          "LangGraph",
+          "pytest",
+          "Vitest",
+          "GitHub workflows",
+          "Python",
+          "TypeScript",
+          "GCP us-central-1",
+          "GCP europe-west4",
+          "AWS",
+          "Azure"
+        ],
+        "case_details": {
+          "actor": "LangSmith及其面向的AI开发团队",
+          "context": "开发和运营LLM应用、AI Agent及多轮工作流，需要在上线前和生产中持续判断质量。",
+          "problem": "Agent存在非确定性，单次人工检查难以发现版本回归、工具调用错误、质量漂移和边缘失败。",
+          "ai_intervention": "使用离线/在线评估、LLM-as-judge、轨迹分析、自动提示词实验和生产样本筛选。",
+          "workflow_change": "从一次性测试转向“数据集回归测试—生产监测—人工复核—自动评估校准—再次迭代”的持续评估流程。",
+          "human_role": "领域专家负责评审运行结果、判断自动评估错误、统一评分标准并补充高质量测试案例。",
+          "outcome": "材料声称可以更早发现回归、衡量生产质量、定位复杂Agent工作流中的错误，并将质量门槛接入发布流程。",
+          "failure_limits": "材料明确承认LLM-as-judge并不总是正确，需要通过人工复核发现分歧并校准；同时没有提供真实客户的改进幅度、误报率或成本数据。"
+        }
+      },
+      "claim_map": {
+        "confirmed_or_reported_facts": [
+          "LangSmith页面列出了离线评估、在线评估、人工反馈、提示词优化和多种评估器类型。",
+          "页面说明其评估可以覆盖Agent轨迹、工具调用和中间决策。",
+          "页面说明其支持与pytest、Vitest和GitHub workflows集成。",
+          "页面说明RAG评估可以分别考察检索质量和生成质量。",
+          "页面说明可从生产trace中抽取样本，并使用LLM-as-judge辅助建立初始标签。"
+        ],
+        "author_interpretations": [
+          "离线评估可视为LLM应用的单元测试。",
+          "在线评估可以帮助检测生产质量漂移。",
+          "将评估阈值接入CI/CD可以让AI开发获得类似确定性软件测试的严谨性。",
+          "人工反馈能够帮助校准自动化评估指标。"
+        ],
+        "model_inferences": [
+          "Agent生产化的核心瓶颈之一会从“能否生成答案”转向“能否持续证明质量”。",
+          "对企业而言，评估体系同时是技术质量机制和组织协作机制，因为它需要业务专家定义标准、复核边界案例并共同维护数据集。",
+          "学习发展或组织能力团队未来可能参与Agent质量标准设计、专家评审机制和岗位工作样本建设，而不只是参与AI培训。",
+          "Agent评估应至少覆盖结果质量、过程质量、风险遵循和业务价值，而不应只看最终文本是否流畅。"
+        ],
+        "unknowns": [
+          "材料没有提供任何具体企业客户、业务场景或可验证的使用前后对比。",
+          "没有提供评估指标的准确率、与人工判断的一致性、误报率或漏报率。",
+          "没有说明不同业务场景应如何选择评估指标和阈值。",
+          "没有说明在线评估的计算成本、延迟、样本覆盖率和人工复核规模。",
+          "没有独立第三方证据验证其关于数据安全、性能无影响和企业部署能力的具体声明。"
+        ]
+      },
+      "evidence_card": {
+        "basic": {
+          "domain": "企业AI深度应用",
+          "topic": "LLM与Agent的持续评估、质量治理和人机反馈闭环",
+          "source_quality": "medium"
+        },
+        "facts": [
+          "材料来自LangChain/LangSmith官方产品页面，属于产品方的一手说明，但具有明显营销属性。",
+          "页面覆盖开发前测试、生产监测、专家反馈、提示词实验、轨迹分析和CI/CD集成等环节。",
+          "材料明确指出LLM-as-judge存在错误，需要人工复核和校准。"
+        ],
+        "data_points": [],
+        "cases": [],
+        "interpretation": {
+          "author_view": "Agent质量需要通过离线与在线评估、人工反馈和自动化流程持续改进；评估可以独立于具体Agent框架。",
+          "my_inference": "企业Agent治理应建立质量信号闭环，并把业务专家纳入评估标准和边界案例维护，而不是把质量判断完全交给模型或工程团队。",
+          "confidence": "medium"
+        },
+        "mechanism": {
+          "trigger": "Agent输出和执行路径具有非确定性，版本、模型、提示词或工具变化可能引发质量回归；生产流量还会产生开发数据集未覆盖的新问题。",
+          "how_it_works": "通过固定数据集进行可重复比较，通过生产trace发现真实问题，通过自动评估扩大覆盖，再用人工复核校准自动评估。",
+          "behavior_or_work_change": "开发团队从手工抽查转向基于数据集、指标和轨迹的迭代；领域专家从最终验收者转为持续参与评分标准和案例维护。",
+          "organization_or_system_change": "质量责任从单一工程测试扩展为技术、业务专家和治理流程共同承担，并可通过CI/CD把质量门槛嵌入发布机制。"
+        },
+        "uncertainties": [
+          "LLM-as-judge在不同任务、语言和风险等级下的可靠性未被量化。",
+          "材料没有说明如何处理评估指标之间的冲突，例如正确性、成本、延迟和用户满意度不一致时如何决策。",
+          "没有真实生产案例来证明持续评估能够带来具体业务收益。",
+          "没有说明组织是否有足够领域专家持续进行人工标注和复核。"
+        ],
+        "research_questions": [
+          "在企业知识问答、管理者教练或学习推荐等不同Agent场景中，哪些指标最能预测真实业务质量？",
+          "人工专家复核需要达到什么抽样比例，才能有效校准LLM-as-judge？",
+          "将评估阈值接入CI/CD后，如何避免过严阈值阻碍迭代或过松阈值放过高风险错误？",
+          "Agent评估数据集如何随业务规则、知识库和岗位流程变化而持续更新？",
+          "在涉及员工、客户或敏感业务数据的场景中，trace采集、脱敏和权限管理应如何设计？"
+        ]
+      },
+      "personal_connection": {
+        "current_work": "可直接帮助你理解企业Agent落地所需的质量标准、专家反馈流程和运行监控机制，并可用于设计学习类或组织能力类AI应用的试点评估方案。",
+        "career_growth": "有助于从“AI应用推广或培训”升级到能够讨论Agent质量、评估体系、治理流程和跨职能落地的实践型专家。",
+        "future_opportunity": "可能指向企业Agent评估顾问、AI应用治理、AI人才能力标准设计和组织级AI质量运营等机会。",
+        "personal_interest": "与理解AI如何改变企业工作方式、Agent如何进入组织以及人才发展体系如何调整高度相关。",
+        "possible_asset": "可沉淀为“企业Agent评估指标与人机校准案例库”，并进一步发展为企业AI落地方法论中的质量治理模块。"
+      },
+      "asset_potential": {
+        "should_build": true,
+        "asset_type": "方法论",
+        "asset_name": "企业Agent持续评估与人机校准方法",
+        "reason": "材料提供了较完整的评估生命周期和关键机制：离线回归、在线监测、轨迹分析、人工复核、自动评估校准以及CI/CD质量门槛。虽然当前证据主要来自供应商介绍，尚不足以形成成熟框架，但足以作为方法论候选并通过后续企业案例验证。",
+        "next_step": "建立一页评估模板，按结果质量、过程质量、风险遵循、用户体验和业务价值五类记录指标；选择一个学习或组织能力类Agent，用20—50条真实或脱敏任务建立基线，并比较人工评分与LLM-as-judge的一致性。"
+      },
+      "belief_status": "L3方法论候选",
+      "relation_to_me": {
+        "current_work": "可用于当前学习发展与组织能力建设岗位中的AI应用试点设计、质量验收和专家反馈机制。",
+        "expert_growth": "推动你从关注AI工具使用转向掌握Agent生产化所需的评估、观测和治理能力。",
+        "long_term_value": "可成为企业AI落地方法论、案例库和未来咨询或课程产品中的质量治理模块。"
+      },
+      "why_read_original": "应继续阅读原文及其配套评估指南，重点确认评估器设计、轨迹评估、数据集构建、人工校准和CI/CD集成的实际技术细节；当前材料主要是产品页面，不能替代独立案例和实测结果。",
+      "original_reading_focus": [
+        "不同评估器类型的适用边界与组合方式",
+        "LLM-as-judge与人工评分的一致性校准方法",
+        "如何从生产trace抽取高价值测试样本",
+        "Agent中间步骤、工具调用和最终结果的分层评分方式",
+        "评估阈值如何接入CI/CD及如何处理误报",
+        "企业部署中的数据安全、脱敏、权限和自托管机制"
+      ],
+      "information_type": "混合",
+      "action_type": "APPLY",
+      "confidence": "medium",
+      "counterpoint": "持续评估并不自动等于高质量Agent。若业务目标定义不清、数据集不能代表真实任务、自动评估器存在系统性偏差，复杂的评估平台可能只是增加监控成本；此外，供应商页面没有证明其方法在具体企业场景中带来了显著业务改进。",
+      "asset_type": "方法论",
+      "drop_reason": null,
+      "source_depth": "full_page_or_long_feed"
+    },
+    "detail_path": "details/9a5bd3c4fc0d.md",
+    "event": {
+      "event_id": "evt_9a5bd3c4fc0d",
+      "event_title": "LangSmith持续评估：把离线回归、在线监测与专家反馈接入Agent生命周期",
+      "event_type": "产品/发布",
+      "cluster_size": 1,
+      "is_cross_source": false
+    }
   }
 ]
