@@ -1,4 +1,4 @@
-# Personal Intelligence Brief｜2026-09-10
+# Personal Intelligence Brief｜2026-09-11
 
 ## Carvana将Slack生产告警接入Claude Tag，形成调查、修复与发布验证闭环
 
