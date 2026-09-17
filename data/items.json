@@ -1120,8 +1120,8 @@
     "detail_path": "details/309b0638866e.md",
     "event": {
       "event_id": "evt_309b0638866e",
-      "event_title": "AI自动求职与小费税收政策可能重塑一线岗位竞争",
-      "event_type": "独立内容",
+      "event_title": "AI自动求职与小费税收优惠可能改变一线岗位竞争",
+      "event_type": "报告/研究",
       "cluster_size": 1,
       "is_cross_source": false
     }
@@ -1371,7 +1371,7 @@
     "detail_path": "details/8f2641506fcb.md",
     "event": {
       "event_id": "evt_8f2641506fcb",
-      "event_title": "Ethan Mollick讨论从人机共智到人机共存的分工设计",
+      "event_title": "Mollick提出从人机共智转向动态人机权责分配",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -1528,10 +1528,10 @@
     },
     "detail_path": "details/2b6e69b6599e.md",
     "event": {
-      "event_id": "evt_856a939995d4",
-      "event_title": "Microsoft Work Trend Index关于从AI工具走向人机混合组织的2025年研究",
+      "event_id": "evt_52ddd24f17c1",
+      "event_title": "微软2025 Work Trend Index：从无限工作日走向人机混合组织",
       "event_type": "报告/研究",
-      "cluster_size": 3,
+      "cluster_size": 2,
       "is_cross_source": false
     }
   },
@@ -2102,10 +2102,10 @@
     },
     "detail_path": "details/a316b29ef60d.md",
     "event": {
-      "event_id": "evt_856a939995d4",
-      "event_title": "Microsoft Work Trend Index关于从AI工具走向人机混合组织的2025年研究",
+      "event_id": "evt_52ddd24f17c1",
+      "event_title": "微软2025 Work Trend Index：从无限工作日走向人机混合组织",
       "event_type": "报告/研究",
-      "cluster_size": 3,
+      "cluster_size": 2,
       "is_cross_source": false
     }
   },
@@ -2376,7 +2376,7 @@
     "detail_path": "details/3b6a2aa04167.md",
     "event": {
       "event_id": "evt_3b6a2aa04167",
-      "event_title": "Qonto在银行应用中部署Claude财务操作代理",
+      "event_title": "Qonto将Claude代理嵌入企业银行财务流程",
       "event_type": "案例",
       "cluster_size": 1,
       "is_cross_source": false
@@ -2524,7 +2524,7 @@
     "detail_path": "details/b592e3334bcd.md",
     "event": {
       "event_id": "evt_b592e3334bcd",
-      "event_title": "LangSmith Engine提出从生产Trace到Agent修复的闭环",
+      "event_title": "LangSmith Engine提出生产Trace到Agent修复的自动化闭环",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -2689,10 +2689,10 @@
     },
     "detail_path": "details/7e3fdc760e37.md",
     "event": {
-      "event_id": "evt_856a939995d4",
-      "event_title": "Microsoft Work Trend Index关于从AI工具走向人机混合组织的2025年研究",
+      "event_id": "evt_7e3fdc760e37",
+      "event_title": "微软Work Trend Index报告AI从个人试用走向流程重构",
       "event_type": "报告/研究",
-      "cluster_size": 3,
+      "cluster_size": 1,
       "is_cross_source": false
     }
   },
@@ -2859,7 +2859,7 @@
     "detail_path": "details/4408c3dfc0e6.md",
     "event": {
       "event_id": "evt_4408c3dfc0e6",
-      "event_title": "Pictet在风险与数据驻留边界内分阶段推广Claude Code",
+      "event_title": "Pictet在风险与数据边界内分阶段推广Claude Code",
       "event_type": "案例",
       "cluster_size": 1,
       "is_cross_source": false
@@ -3016,7 +3016,7 @@
     "detail_path": "details/11eeb0d79ee6.md",
     "event": {
       "event_id": "evt_11eeb0d79ee6",
-      "event_title": "LangSmith以Trace、监控和洞察构建Agent生产可观测性",
+      "event_title": "LangSmith提供Agent生产可观测性与Trace查询",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -3217,7 +3217,7 @@
     "detail_path": "details/9a5bd3c4fc0d.md",
     "event": {
       "event_id": "evt_9a5bd3c4fc0d",
-      "event_title": "LangSmith提出Agent持续评估闭环",
+      "event_title": "LangSmith提出Agent持续评估与生产反馈闭环",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -5099,7 +5099,7 @@
     "detail_path": "details/3f37b0a02f79.md",
     "event": {
       "event_id": "evt_3f37b0a02f79",
-      "event_title": "ChatGPT Work使用外部地图数据和代码执行生成跑步路线",
+      "event_title": "ChatGPT Work调用地图数据和代码生成跑步路线",
       "event_type": "独立内容",
       "cluster_size": 1,
       "is_cross_source": false
@@ -5305,7 +5305,7 @@
     "detail_path": "details/08605124c328.md",
     "event": {
       "event_id": "evt_08605124c328",
-      "event_title": "LangSmith Sandboxes为Agent生成代码提供隔离MicroVM环境",
+      "event_title": "LangSmith Sandboxes为Agent生成代码提供隔离执行环境",
       "event_type": "产品/发布",
       "cluster_size": 1,
       "is_cross_source": false
@@ -6003,7 +6003,7 @@
     "detail_path": "details/2cb833715d29.md",
     "event": {
       "event_id": "evt_2cb833715d29",
-      "event_title": "EvenUp重构人身伤害案件文档生成流程",
+      "event_title": "EvenUp用分层读取与验证机制重构法律文档流程",
       "event_type": "案例",
       "cluster_size": 1,
       "is_cross_source": false
@@ -6473,7 +6473,7 @@
     "detail_path": "details/6b2e756ed180.md",
     "event": {
       "event_id": "evt_6b2e756ed180",
-      "event_title": "Microsoft 2022混合办公报告倡导从活动监控转向目标、连接与成长",
+      "event_title": "微软2022混合办公报告主张从活动监控转向目标、连接与成长",
       "event_type": "报告/研究",
       "cluster_size": 1,
       "is_cross_source": false
