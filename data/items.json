@@ -7166,5 +7166,168 @@
       "cluster_size": 1,
       "is_cross_source": false
     }
+  },
+  {
+    "id": "itm_anthropic_economic_index_e8fa33942118",
+    "source_id": "anthropic_economic_index",
+    "source_name": "Anthropic Economic Index",
+    "source_role": "primary_economic_data",
+    "evidence_class": "primary_evidence",
+    "platform": "web",
+    "title_original": "Anthropic Economic Index - latest update",
+    "url": "https://www.anthropic.com/economic-index",
+    "published": "",
+    "discovery_method": "self_page_fallback",
+    "processed_at_utc": "2026-09-18T05:24:45.271517+00:00",
+    "model": "gpt-5.6-luna",
+    "analysis_version": "v0.6.1-personal",
+    "analysis": {
+      "analysis_version": "v0.6.1-personal",
+      "keep": false,
+      "pis": 23,
+      "tier": "Drop",
+      "scores": {
+        "strategic_relevance": 14,
+        "practical_value": 2,
+        "cognitive_upgrade": 1,
+        "personal_asset_value": 2,
+        "information_quality": 3,
+        "specificity": 1,
+        "evidence_density": 0
+      },
+      "knowledge_domain": "企业AI深度应用",
+      "title_zh": "Anthropic Economic Index：用于观察AI对经济与工作的影响，但当前页面未加载数据",
+      "summary_zh": "该页面是Anthropic Economic Index的官方入口，声称用于理解AI对经济的影响，并显示最后更新时间为2026年6月26日。但当前可获得材料仅包含页面标题、导航和“Loading data”，没有实际研究结论、数据、职业分布、任务分析或增强与自动化比较。",
+      "core_judgment": "这是一个值得持续跟踪的一级数据源入口，但当前材料不足以支持任何关于AI如何改变职业、任务或工作方式的判断。不能把页面定位和预期研究内容当作已验证证据。",
+      "why_it_matters": "如果后续页面成功加载完整数据，它可能直接服务于你对企业AI落地、工作流程重构、职业变化以及增强与自动化边界的研究。当前版本只能确认该研究项目存在，不能用于形成方法论、案例或趋势结论。",
+      "evidence_types_detected": [
+        "官方研究项目页面",
+        "数据观察项目定位"
+      ],
+      "evidence": {
+        "concrete_facts": [
+          "页面标题为“Anthropic Economic Index”。",
+          "页面副标题为“Understanding AI’s effects on the economy”。",
+          "页面显示“Last updated: Jun 26, 2026”。",
+          "当前页面显示“Loading data”，未呈现可读取的数据内容。",
+          "页面导航中包含Research、Policy、Enterprise、AI agents等Anthropic相关栏目。"
+        ],
+        "numbers_metrics": [],
+        "mechanism_steps": [],
+        "named_entities": [
+          "Anthropic",
+          "Anthropic Economic Index",
+          "Claude"
+        ],
+        "case_details": {
+          "actor": "Anthropic",
+          "context": "官方经济研究与产品页面。",
+          "problem": "试图理解AI对经济、职业、任务和工作活动的影响。",
+          "ai_intervention": "非AI主题，不适用；材料只说明该项目研究AI经济影响，未提供具体干预方式。",
+          "workflow_change": "非AI主题，不适用；当前材料没有描述任何工作流程变化。",
+          "human_role": "非AI主题，不适用；当前材料没有描述人的角色变化。",
+          "outcome": "材料未提供研究结果或可验证结论。",
+          "failure_limits": "页面处于“Loading data”状态，且文章元信息标注为partial_feed_or_excerpt；无法判断数据口径、样本、时间范围、分析方法或结论可靠性。"
+        }
+      },
+      "claim_map": {
+        "confirmed_or_reported_facts": [
+          "Anthropic维护名为Anthropic Economic Index的官方页面。",
+          "页面宣称其目标是理解AI对经济的影响。",
+          "页面显示的最近更新时间为2026年6月26日。",
+          "当前抓取内容没有加载出实际数据。"
+        ],
+        "author_interpretations": [
+          "页面名称和副标题表明Anthropic将该项目定位为经济影响观察或研究项目。"
+        ],
+        "model_inferences": [
+          "该项目如果提供真实Claude使用数据，未来可能成为观察AI任务采用情况和工作重构的重要一手来源；这是基于项目定位的推断，当前材料未予以证实。",
+          "由于页面没有展示方法和数据，当前不能判断其是否能有效区分增强与自动化，也不能判断其对企业场景的代表性。"
+        ],
+        "unknowns": [
+          "数据覆盖哪些用户、国家、行业和职业。",
+          "数据来自Claude使用日志、调查、公开数据还是多种数据源。",
+          "如何定义任务、职业、增强和自动化。",
+          "是否披露样本规模、时间窗口、隐私处理和选择偏差。",
+          "是否包含企业客户数据，以及消费级与企业级使用是否区分。",
+          "是否报告具体采用率、任务占比、生产率或工作结果指标。"
+        ]
+      },
+      "evidence_card": {
+        "basic": {
+          "domain": "企业AI深度应用",
+          "topic": "使用真实AI交互或相关经济数据观察职业、任务与工作活动变化",
+          "source_quality": "low"
+        },
+        "facts": [
+          "Anthropic官方页面将Anthropic Economic Index定位为理解AI对经济影响的项目。",
+          "当前可见内容未提供任何数据表、图表、研究摘要或方法说明。"
+        ],
+        "data_points": [],
+        "cases": [],
+        "interpretation": {
+          "author_view": "Anthropic认为有必要通过Economic Index理解AI对经济的影响，但当前页面没有呈现具体研究观点。",
+          "my_inference": "该来源具有潜在的一手数据价值，但本次材料只能作为来源发现信号，不能作为经济影响或企业AI应用的证据。",
+          "confidence": "low"
+        },
+        "mechanism": {
+          "trigger": "AI工具使用规模扩大，需要观察其对职业、任务和工作活动的实际影响。",
+          "how_it_works": "当前材料未说明数据收集、分类、分析或因果识别机制。",
+          "behavior_or_work_change": "当前材料未提供任何行为或工作变化证据。",
+          "organization_or_system_change": "当前材料未提供任何组织、岗位设计或人才系统变化证据。"
+        },
+        "uncertainties": [
+          "页面可能因动态加载失败而缺少核心内容。",
+          "文章元信息标注为partial_feed_or_excerpt，材料并非完整研究文本。",
+          "页面显示的更新时间为2026年6月26日，但当前材料没有提供版本历史或数据发布日期说明。",
+          "无法确认该页面是否面向公开数据展示、研究报告汇总，或仅作为项目入口。"
+        ],
+        "research_questions": [
+          "完整数据中是否区分AI对任务的增强、部分自动化和完全自动化？",
+          "哪些职业和任务的Claude使用增长最快，是否与企业实际流程改造同步？",
+          "数据是否能区分个人试用、日常辅助和嵌入企业系统的深度应用？",
+          "Anthropic如何处理使用数据的选择偏差、隐私问题和Claude用户群体偏差？",
+          "数据是否包含工作结果指标，例如耗时、质量、交付量或岗位变化，而不仅是使用频率？",
+          "研究结果能否转化为企业岗位任务盘点、学习发展和管理者能力设计？"
+        ]
+      },
+      "personal_connection": {
+        "current_work": "当前没有可直接应用于学习发展或组织能力建设的具体结论。",
+        "career_growth": "持续跟踪该项目有助于建立基于真实使用数据而非概念宣传的企业AI判断能力。",
+        "future_opportunity": "如果后续数据开放并具备职业、任务和企业使用维度，可能支持AI工作重构研究、人才能力诊断或企业AI咨询产品。",
+        "personal_interest": "与长期关注AI如何改变工作、职业和社会结构的方向高度相关。",
+        "possible_asset": "未来可纳入“AI任务变化与增强/自动化观察库”，但当前材料尚不足以建立该资产。"
+      },
+      "asset_potential": {
+        "should_build": false,
+        "asset_type": "趋势判断",
+        "asset_name": "AI任务变化与增强/自动化观察库",
+        "reason": "来源方向与个人研究主题高度相关，但当前只有动态页面壳，没有数据、案例、方法或可复用机制，暂不应沉淀为正式资产。",
+        "next_step": "后续获取完整页面、研究报告或可下载数据后，重点记录数据口径、样本范围、职业/任务分类、增强与自动化指标、企业场景相关性及局限。"
+      },
+      "belief_status": "L0信息",
+      "relation_to_me": {
+        "current_work": "暂不能直接支持当前学习发展与组织能力建设工作。",
+        "expert_growth": "可作为跟踪一手AI经济数据的来源入口，帮助你避免只依据观点判断AI工作影响。",
+        "long_term_value": "若后续持续发布可比数据，可能成为企业AI趋势判断和工作重构案例研究的长期数据源。"
+      },
+      "why_read_original": "当前摘录不完整，值得回到原始页面或查找相关研究报告，以确认数据是否加载、研究方法如何设计，以及是否存在职业、任务、增强和自动化维度。",
+      "original_reading_focus": [
+        "数据是否实际加载以及是否有可下载数据",
+        "样本来源、时间范围和隐私处理方式",
+        "职业、任务和工作活动的分类方法",
+        "增强与自动化的定义及衡量指标",
+        "是否包含企业用户或真实组织流程数据",
+        "研究结论、局限性和版本变化"
+      ],
+      "information_type": "混合",
+      "action_type": "IGNORE",
+      "confidence": "low",
+      "counterpoint": "作为Anthropic自有生态的数据项目，其使用数据可能受到Claude用户结构、产品特性和公司披露选择的影响，不能直接代表所有AI工具或整体经济。",
+      "asset_type": "趋势观察",
+      "drop_reason": null,
+      "source_depth": "partial_feed_or_excerpt"
+    },
+    "detail_path": "details/551752b7d543.md"
   }
 ]

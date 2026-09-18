@@ -1,4 +1,4 @@
-# Personal Intelligence Brief｜2026-09-17
+# Personal Intelligence Brief｜2026-09-18
 
 ## EvenUp用分层读取与验证机制重构法律文档流程
 
