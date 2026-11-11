@@ -1,4 +1,4 @@
-# Personal Intelligence Brief｜2026-11-10
+# Personal Intelligence Brief｜2026-11-11
 
 ## Notion规模化部署由事件触发的Claude Agent
 
